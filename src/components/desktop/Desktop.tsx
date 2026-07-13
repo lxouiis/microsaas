@@ -1,0 +1,218 @@
+'use client';
+import { useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useWindowStore } from '@/stores/windowStore';
+import { useDesktopStore } from '@/stores/desktopStore';
+import type { DesktopConfig } from '@/lib/types';
+import DesktopIcon from './DesktopIcon';
+import Taskbar from './Taskbar';
+import StartMenu from './StartMenu';
+import ShutdownSequence from './ShutdownSequence';
+import FloatingParticles from './FloatingParticles';
+import Window from './Window';
+
+// App components
+import MailApp from '../apps/MailApp';
+import GachaApp from '../apps/GachaApp';
+import MixtapeApp from '../apps/MixtapeApp';
+import TicketApp from '../apps/TicketApp';
+import GameApp from '../apps/GameApp';
+import PhotosApp from '../apps/PhotosApp';
+import CalendarApp from '../apps/CalendarApp';
+import SecretApp from '../apps/SecretApp';
+import type { AppType } from '@/stores/windowStore';
+
+interface DesktopProps {
+  config: DesktopConfig;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderApp(appType: AppType, config: any) {
+  switch (appType) {
+    case 'mail': return <MailApp config={config} />;
+    case 'gacha': return <GachaApp config={config} />;
+    case 'mixtape': return <MixtapeApp config={config} />;
+    case 'ticket': return <TicketApp config={config} />;
+    case 'game': return <GameApp config={config} />;
+    case 'photos': return <PhotosApp config={config} />;
+    case 'calendar': return <CalendarApp config={config} />;
+    case 'secret': return <SecretApp config={config} />;
+    default: return null;
+  }
+}
+
+export default function Desktop({ config }: DesktopProps) {
+  const { windows, closeWindow, minimizeWindow, focusWindow } = useWindowStore();
+  const { starEarned } = useDesktopStore();
+  const [startMenuOpen, setStartMenuOpen] = useState(false);
+  const [isShuttingDown, setIsShuttingDown] = useState(false);
+
+  const handleRestart = useCallback(() => {
+    setTimeout(() => window.location.reload(), 500);
+  }, []);
+
+  const APP_ORDER: AppType[] = ['mail', 'gacha', 'mixtape', 'ticket', 'game', 'photos', 'calendar', 'secret'];
+
+  const enabledApps = APP_ORDER.filter(
+    (appType) => config.apps[appType]?.enabled !== false
+  );
+
+  const wallpaper = config.wallpaper || 'linear-gradient(135deg, #4EBFBF 0%, #3AA0A0 40%, #5BB8D4 70%, #4EBFBF 100%)';
+
+  return (
+    <div
+      className="fixed inset-0 overflow-hidden"
+      style={{
+        background: config.wallpaperType === 'image' ? `url(${wallpaper}) center/cover` : wallpaper,
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'cover',
+      }}
+      onClick={() => startMenuOpen && setStartMenuOpen(false)}
+    >
+      {/* CRT scanlines */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)',
+          zIndex: 500,
+        }}
+      />
+
+      {/* Floating particles */}
+      <FloatingParticles />
+
+      {/* Desktop area (above taskbar) */}
+      <div className="absolute inset-0" style={{ bottom: 40, overflow: 'hidden' }}>
+        {/* Desktop icons - left column */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 16,
+            left: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
+          {enabledApps.map((appType) => (
+            <DesktopIcon key={appType} appType={appType} />
+          ))}
+
+          {/* Recycle bin always visible */}
+          <motion.div
+            className="desktop-icon"
+            whileHover={{ scale: 1.08, y: -2 }}
+            whileTap={{ scale: 0.92 }}
+            title="Recycle Bin"
+            style={{ cursor: 'default' }}
+          >
+            <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>
+              🗑️
+            </div>
+            <div className="desktop-icon-label">Recycle Bin</div>
+          </motion.div>
+        </div>
+
+        {/* Star reward on desktop (earned by playing game) */}
+        <AnimatePresence>
+          {starEarned && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0, rotate: -180 }}
+              animate={{
+                opacity: 1,
+                scale: [1, 1.05, 1],
+                rotate: [0, 10, -10, 0],
+              }}
+              exit={{ opacity: 0, scale: 0 }}
+              transition={{ type: 'tween', repeat: Infinity, duration: 4, ease: 'easeInOut', repeatType: 'loop' }}
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                fontSize: 32,
+                filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.8))',
+                cursor: 'default',
+              }}
+              title="You earned this star! ⭐"
+            >
+              ⭐
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Sticky note */}
+        {config.stickyNote && (
+          <motion.div
+            className="sticky-note"
+            drag
+            dragMomentum={false}
+            style={{
+              position: 'absolute',
+              right: 16,
+              top: 60,
+              width: 180,
+              zIndex: 200,
+              cursor: 'move',
+            }}
+            whileHover={{ scale: 1.02, rotate: 1 }}
+            title="P.S. from your creator"
+          >
+            <div style={{ paddingTop: 8, lineHeight: 1.5 }}>{config.stickyNote}</div>
+          </motion.div>
+        )}
+
+        {/* Windows */}
+        {windows.map((win) => {
+          const appConfig = config.apps[win.appType]?.config || {};
+          return (
+            <Window
+              key={win.id}
+              id={win.id}
+              title={win.title}
+              icon={win.icon}
+              isMinimized={win.isMinimized}
+              isFocused={win.isFocused}
+              position={win.position}
+              size={win.size}
+              zIndex={win.zIndex}
+              onClose={() => closeWindow(win.id)}
+              onMinimize={() => minimizeWindow(win.id)}
+              onFocus={() => focusWindow(win.id)}
+            >
+              {renderApp(win.appType, appConfig)}
+            </Window>
+          );
+        })}
+      </div>
+
+      {/* Watermark */}
+      <div className="watermark">made with Desktop Dear ♥</div>
+
+      {/* Start Menu */}
+      <StartMenu
+        isOpen={startMenuOpen}
+        onClose={() => setStartMenuOpen(false)}
+        onShutdown={() => setIsShuttingDown(true)}
+        recipientName={config.recipientName}
+      />
+
+      {/* Taskbar */}
+      <div className="absolute bottom-0 left-0 right-0" style={{ zIndex: 999 }}>
+        <Taskbar
+          onStartClick={() => setStartMenuOpen((v) => !v)}
+          isStartMenuOpen={startMenuOpen}
+        />
+      </div>
+
+      {/* Shutdown */}
+      <AnimatePresence>
+        {isShuttingDown && (
+          <ShutdownSequence
+            message={config.shutdownMessage}
+            onRestart={handleRestart}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
