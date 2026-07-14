@@ -10,6 +10,7 @@ import StartMenu from './StartMenu';
 import ShutdownSequence from './ShutdownSequence';
 import FloatingParticles from './FloatingParticles';
 import Window from './Window';
+import DesktopPet from './DesktopPet';
 
 // App components
 import MailApp from '../apps/MailApp';
@@ -61,6 +62,7 @@ export default function Desktop({ config }: DesktopProps) {
 
   return (
     <div
+      id="desktop-area"
       className="absolute inset-0 overflow-hidden"
       style={{
         backgroundImage: config.wallpaperType === 'image' ? `url(${wallpaper})` : (wallpaper.startsWith('linear') || wallpaper.startsWith('radial') ? wallpaper : 'none'),
@@ -278,6 +280,8 @@ export default function Desktop({ config }: DesktopProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <DesktopPet />
     </div>
   );
 }
