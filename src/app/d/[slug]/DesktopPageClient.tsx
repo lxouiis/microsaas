@@ -13,6 +13,7 @@ export default function DesktopPageClient({ config }: DesktopPageClientProps) {
   const [bootDone, setBootDone] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [scale, setScale] = useState(1);
+  const [currentConfig, setCurrentConfig] = useState<DesktopConfig>(config);
 
   const handleBootComplete = useCallback(() => {
     setBootDone(true);
@@ -40,6 +41,20 @@ export default function DesktopPageClient({ config }: DesktopPageClientProps) {
     return () => window.removeEventListener('resize', updateScale);
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const localData = localStorage.getItem(`desktop_${config.slug}`);
+      if (localData) {
+        try {
+          const parsed = JSON.parse(localData);
+          setCurrentConfig(parsed);
+        } catch (e) {
+          console.error('Failed to parse local config', e);
+        }
+      }
+    }
+  }, [config]);
+
   return (
     <div className="fixed inset-0 overflow-hidden bg-[#121212] flex items-center justify-center">
       {isMobile ? (
@@ -63,14 +78,14 @@ export default function DesktopPageClient({ config }: DesktopPageClientProps) {
             {!bootDone && (
               <BootSequence
                 key="boot"
-                recipientName={config.recipientName}
-                welcomeMessage={config.welcomeMessage}
+                recipientName={currentConfig.recipientName}
+                welcomeMessage={currentConfig.welcomeMessage}
                 onComplete={handleBootComplete}
               />
             )}
           </AnimatePresence>
 
-          {bootDone && <Desktop config={config} />}
+          {bootDone && <Desktop config={currentConfig} />}
         </div>
       ) : (
         // Fullscreen view on standard desktop screens
@@ -79,14 +94,14 @@ export default function DesktopPageClient({ config }: DesktopPageClientProps) {
             {!bootDone && (
               <BootSequence
                 key="boot"
-                recipientName={config.recipientName}
-                welcomeMessage={config.welcomeMessage}
+                recipientName={currentConfig.recipientName}
+                welcomeMessage={currentConfig.welcomeMessage}
                 onComplete={handleBootComplete}
               />
             )}
           </AnimatePresence>
 
-          {bootDone && <Desktop config={config} />}
+          {bootDone && <Desktop config={currentConfig} />}
         </div>
       )}
     </div>

@@ -46,6 +46,12 @@ export default function CreatePage() {
     setSlug(generatedSlug);
     
     const savedConfig = { ...config, slug: generatedSlug };
+    
+    // Save to localStorage as a client-side fallback for development/offline test runs
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`desktop_${generatedSlug}`, JSON.stringify(savedConfig));
+    }
+    
     const result = await saveDesktop(generatedSlug, savedConfig);
     
     if (result.success) {
