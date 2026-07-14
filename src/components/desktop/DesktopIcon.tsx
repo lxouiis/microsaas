@@ -55,12 +55,12 @@ export default function DesktopIcon({ appType, label, disabled = false }: Deskto
       {/* Icon container with pixel art frame effect */}
       <motion.div
         style={{
-          width: 48,
-          height: 48,
+          width: 56,
+          height: 56,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '32px',
+          fontSize: '38px',
           filter: disabled ? 'grayscale(0.7)' : 'none',
           imageRendering: 'pixelated',
         }}
