@@ -85,35 +85,104 @@ export default function Desktop({ config }: DesktopProps) {
 
       {/* Desktop area (above taskbar) */}
       <div className="absolute inset-0" style={{ bottom: 40, overflow: 'hidden' }}>
-        {/* Desktop icons - left column */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 16,
-            left: 12,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-          }}
-        >
-          {enabledApps.map((appType) => (
-            <DesktopIcon key={appType} appType={appType} />
-          ))}
+        {/* Scattered, Draggable, Glassmorphic Desktop Icons */}
+        {(() => {
+          const ICON_POSITIONS: Record<string, { left: string; top: string }> = {
+            mail: { left: '6%', top: '6%' },
+            gacha: { left: '28%', top: '12%' },
+            mixtape: { left: '8%', top: '52%' },
+            ticket: { left: '50%', top: '8%' },
+            game: { left: '72%', top: '6%' },
+            photos: { left: '88%', top: '12%' },
+            calendar: { left: '70%', top: '50%' },
+            secret: { left: '88%', top: '52%' },
+            recycle: { left: '48%', top: '50%' },
+          };
 
-          {/* Recycle bin always visible */}
-          <motion.div
-            className="desktop-icon"
-            whileHover={{ scale: 1.08, y: -2 }}
-            whileTap={{ scale: 0.92 }}
-            title="Recycle Bin"
-            style={{ cursor: 'default' }}
-          >
-            <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>
-              🗑️
-            </div>
-            <div className="desktop-icon-label">Recycle Bin</div>
-          </motion.div>
-        </div>
+          return (
+            <>
+              {enabledApps.map((appType) => {
+                const pos = ICON_POSITIONS[appType] || { left: '10%', top: '10%' };
+                return (
+                  <motion.div
+                    key={appType}
+                    drag
+                    dragMomentum={false}
+                    dragElastic={0}
+                    style={{
+                      position: 'absolute',
+                      left: pos.left,
+                      top: pos.top,
+                      zIndex: 50,
+                      cursor: 'move',
+                    }}
+                  >
+                    <div 
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.15)',
+                        backdropFilter: 'blur(8px)',
+                        border: '1.5px solid rgba(255, 255, 255, 0.25)',
+                        borderRadius: '16px',
+                        padding: '10px 14px',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'box-shadow 0.2s, border-color 0.2s',
+                      }}
+                      className="hover:border-[rgba(255,255,255,0.45)] hover:shadow-lg"
+                    >
+                      <DesktopIcon appType={appType} />
+                    </div>
+                  </motion.div>
+                );
+              })}
+
+              {/* Recycle bin */}
+              <motion.div
+                drag
+                dragMomentum={false}
+                dragElastic={0}
+                style={{
+                  position: 'absolute',
+                  left: ICON_POSITIONS.recycle.left,
+                  top: ICON_POSITIONS.recycle.top,
+                  zIndex: 50,
+                  cursor: 'move',
+                }}
+              >
+                <div 
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1.5px solid rgba(255, 255, 255, 0.25)',
+                    borderRadius: '16px',
+                    padding: '10px 14px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <motion.div
+                    className="desktop-icon"
+                    whileHover={{ scale: 1.08, y: -2 }}
+                    whileTap={{ scale: 0.92 }}
+                    title="Recycle Bin"
+                    style={{ cursor: 'default' }}
+                  >
+                    <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>
+                      🗑️
+                    </div>
+                    <div className="desktop-icon-label">Recycle Bin</div>
+                  </motion.div>
+                </div>
+              </motion.div>
+            </>
+          );
+        })()}
 
         {/* Star reward on desktop (earned by playing game) */}
         <AnimatePresence>
