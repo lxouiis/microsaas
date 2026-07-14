@@ -63,7 +63,8 @@ export default function Desktop({ config }: DesktopProps) {
     <div
       className="absolute inset-0 overflow-hidden"
       style={{
-        backgroundImage: config.wallpaperType === 'image' ? `url(${wallpaper})` : wallpaper,
+        backgroundImage: config.wallpaperType === 'image' ? `url(${wallpaper})` : (wallpaper.startsWith('linear') || wallpaper.startsWith('radial') ? wallpaper : 'none'),
+        backgroundColor: wallpaper.startsWith('linear') || wallpaper.startsWith('radial') ? 'transparent' : wallpaper,
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
         backgroundSize: 'cover',
