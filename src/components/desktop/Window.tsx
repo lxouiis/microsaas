@@ -11,6 +11,7 @@ interface WindowProps {
   title: string;
   icon: string;
   isMinimized: boolean;
+  isMaximized: boolean;
   isFocused: boolean;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -18,6 +19,7 @@ interface WindowProps {
   children: ReactNode;
   onClose: () => void;
   onMinimize: () => void;
+  onMaximize: () => void;
   onFocus: () => void;
 }
 
@@ -27,6 +29,7 @@ export default function Window({
   title,
   icon,
   isMinimized,
+  isMaximized,
   isFocused,
   position,
   size,
@@ -34,6 +37,7 @@ export default function Window({
   children,
   onClose,
   onMinimize,
+  onMaximize,
   onFocus,
 }: WindowProps) {
   const { updatePosition } = useWindowStore();
@@ -47,7 +51,8 @@ export default function Window({
 
   // Drag logic via native mouse events for performance
   const handleTitleBarMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.xp-btn') || (e.target as HTMLElement).closest('.gacha-btn')) return;
+    if (isMaximized) return; // Prevent dragging if maximized
+    if ((e.target as HTMLElement).closest('.xp-btn') || (e.target as HTMLElement).closest('.gacha-btn') || (e.target as HTMLElement).closest('.gacha-btn-min') || (e.target as HTMLElement).closest('.gacha-btn-close') || (e.target as HTMLElement).closest('.gacha-btn-max')) return;
     isDragging.current = true;
     dragStart.current = {
       mouseX: e.clientX,
@@ -59,9 +64,13 @@ export default function Window({
     e.preventDefault();
   };
 
+  const handleTitleBarDoubleClick = () => {
+    onMaximize();
+  };
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging.current) return;
+      if (!isDragging.current || isMaximized) return;
       const dx = e.clientX - dragStart.current.mouseX;
       const dy = e.clientY - dragStart.current.mouseY;
       const newX = Math.max(0, Math.min(dragStart.current.winX + dx, window.innerWidth - 120));
@@ -79,7 +88,7 @@ export default function Window({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [id, updatePosition]);
+  }, [id, updatePosition, isMaximized]);
 
   const handleClose = () => {
     sounds.windowClose();
@@ -92,12 +101,12 @@ export default function Window({
     <AnimatePresence>
       <motion.div
         ref={windowRef}
-        className={`${isGacha ? 'desktop-window-gacha' : 'xp-window'} absolute select-none`}
+        className={`${isGacha ? 'desktop-window-gacha' : 'xp-window'} absolute select-none flex flex-col`}
         style={{
-          left: position.x,
-          top: position.y,
-          width: size.width,
-          height: size.height,
+          left: isMaximized ? 0 : position.x,
+          top: isMaximized ? 0 : position.y,
+          width: isMaximized ? '100%' : size.width,
+          height: isMaximized ? '100%' : size.height,
           zIndex,
         }}
         initial={{ scale: 0.8, opacity: 0, y: 20 }}
@@ -113,6 +122,7 @@ export default function Window({
             : `xp-titlebar ${!isFocused ? 'xp-titlebar-inactive' : ''}`
           }
           onMouseDown={handleTitleBarMouseDown}
+          onDoubleClick={handleTitleBarDoubleClick}
         >
           <div className={isGacha ? "gacha-titlebar-text" : "xp-titlebar-text"}>
             <span className="text-lg">{icon}</span>
@@ -127,6 +137,13 @@ export default function Window({
               _
             </button>
             <button
+              className={isGacha ? "gacha-btn-max" : "xp-btn xp-btn-max"}
+              onClick={onMaximize}
+              title={isMaximized ? "Restore" : "Maximize"}
+            >
+              {isMaximized ? "❐" : "☐"}
+            </button>
+            <button
               className={isGacha ? "gacha-btn-close" : "xp-btn xp-btn-close"}
               onClick={handleClose}
               title="Close"
@@ -138,12 +155,7 @@ export default function Window({
 
         {/* Window Content */}
         <div
-          className="overflow-hidden"
-          style={{
-            height: size.height - (isGacha ? 55 : 33), // subtract titlebar and statusbar height for Gacha
-            display: 'flex',
-            flexDirection: 'column',
-          }}
+          className="overflow-hidden flex-1 flex flex-col min-h-0"
         >
           {children}
         </div>

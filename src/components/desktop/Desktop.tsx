@@ -42,7 +42,7 @@ function renderApp(appType: AppType, config: any) {
 }
 
 export default function Desktop({ config }: DesktopProps) {
-  const { windows, closeWindow, minimizeWindow, focusWindow } = useWindowStore();
+  const { windows, closeWindow, minimizeWindow, focusWindow, toggleMaximizeWindow } = useWindowStore();
   const { starEarned, notification, hideNotification } = useDesktopStore();
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
@@ -172,12 +172,14 @@ export default function Desktop({ config }: DesktopProps) {
               title={win.title}
               icon={win.icon}
               isMinimized={win.isMinimized}
+              isMaximized={win.isMaximized}
               isFocused={win.isFocused}
               position={win.position}
               size={win.size}
               zIndex={win.zIndex}
               onClose={() => closeWindow(win.id)}
               onMinimize={() => minimizeWindow(win.id)}
+              onMaximize={() => toggleMaximizeWindow(win.id)}
               onFocus={() => focusWindow(win.id)}
             >
               {renderApp(win.appType, appConfig)}

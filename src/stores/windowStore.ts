@@ -9,6 +9,7 @@ export interface WindowState {
   icon: string;
   isOpen: boolean;
   isMinimized: boolean;
+  isMaximized: boolean;
   isFocused: boolean;
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -35,6 +36,7 @@ interface WindowStore {
   closeWindow: (id: string) => void;
   minimizeWindow: (id: string) => void;
   restoreWindow: (id: string) => void;
+  toggleMaximizeWindow: (id: string) => void;
   focusWindow: (id: string) => void;
   updatePosition: (id: string, position: { x: number; y: number }) => void;
   updateSize: (id: string, size: { width: number; height: number }) => void;
@@ -89,6 +91,7 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
       icon,
       isOpen: true,
       isMinimized: false,
+      isMaximized: false,
       isFocused: true,
       position: { x: Math.min(centerX, (window?.innerWidth ?? 800) - 100), y: Math.min(centerY, (window?.innerHeight ?? 600) - 100) },
       size,
@@ -149,6 +152,14 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
   updateSize: (id, size) => {
     set((state) => ({
       windows: state.windows.map((w) => (w.id === id ? { ...w, size } : w)),
+    }));
+  },
+
+  toggleMaximizeWindow: (id) => {
+    set((state) => ({
+      windows: state.windows.map((w) =>
+        w.id === id ? { ...w, isMaximized: !w.isMaximized } : w
+      ),
     }));
   },
 }));

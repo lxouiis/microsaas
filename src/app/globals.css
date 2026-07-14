@@ -856,7 +856,7 @@ html, body {
   gap: 6px;
 }
 
-.gacha-btn-min, .gacha-btn-close {
+.gacha-btn-min, .gacha-btn-max, .gacha-btn-close {
   background: #c0c0c0;
   color: #000;
   border-top: 1.5px solid #ffffff;
@@ -876,7 +876,7 @@ html, body {
   padding-bottom: 2px;
 }
 
-.gacha-btn-min:active, .gacha-btn-close:active {
+.gacha-btn-min:active, .gacha-btn-max:active, .gacha-btn-close:active {
   border-top: 1.5px solid #808080;
   border-left: 1.5px solid #808080;
   border-right: 1.5px solid #ffffff;
