@@ -43,7 +43,7 @@ function renderApp(appType: AppType, config: any) {
 
 export default function Desktop({ config }: DesktopProps) {
   const { windows, closeWindow, minimizeWindow, focusWindow } = useWindowStore();
-  const { starEarned } = useDesktopStore();
+  const { starEarned, notification, hideNotification } = useDesktopStore();
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
 
@@ -168,6 +168,7 @@ export default function Desktop({ config }: DesktopProps) {
             <Window
               key={win.id}
               id={win.id}
+              appType={win.appType}
               title={win.title}
               icon={win.icon}
               isMinimized={win.isMinimized}
@@ -211,6 +212,53 @@ export default function Desktop({ config }: DesktopProps) {
             message={config.shutdownMessage}
             onRestart={handleRestart}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Balloon Notification */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            style={{
+              position: 'fixed',
+              bottom: 50,
+              right: 12,
+              zIndex: 9999,
+              background: '#FFFFE1',
+              border: '1px solid #000000',
+              borderRadius: 6,
+              padding: '10px 14px',
+              maxWidth: 240,
+              boxShadow: '2px 2px 5px rgba(0,0,0,0.3)',
+              fontFamily: 'var(--font-body)',
+              fontSize: '11px',
+              color: '#000',
+            }}
+          >
+            {/* Header info */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, borderBottom: '1px solid #CCC', paddingBottom: 2 }}>
+              <span style={{ fontWeight: 800, color: '#000080' }}>💡 System Alert</span>
+              <button
+                onClick={hideNotification}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  fontWeight: 900,
+                  color: '#666',
+                }}
+              >
+                ×
+              </button>
+            </div>
+            {/* Balloon content text */}
+            <div style={{ lineHeight: 1.4, color: '#333' }}>{notification}</div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

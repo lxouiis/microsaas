@@ -12,12 +12,13 @@ interface GachaAppProps {
 type GachaPhase = 'idle' | 'coin' | 'turning' | 'shaking' | 'rolling' | 'revealing' | 'done';
 
 export default function GachaApp({ config }: GachaAppProps) {
-  const { openedCapsules, openCapsule } = useDesktopStore();
+  const { openedCapsules, openCapsule, credits, deductCredits, addCredits, showNotification } = useDesktopStore();
   const sounds = useSound();
   const [phase, setPhase] = useState<GachaPhase>('idle');
   const [currentCapsule, setCurrentCapsule] = useState<number | null>(null);
   const [showMessage, setShowMessage] = useState(false);
   const [confetti, setConfetti] = useState<{ id: number; x: number; color: string; emoji: string }[]>([]);
+  const [insufficientCredits, setInsufficientCredits] = useState(false);
 
   const totalCapsules = config.capsules.length;
   const remainingCapsules = config.capsules.filter((_, i) => !openedCapsules.includes(i));
@@ -44,8 +45,20 @@ export default function GachaApp({ config }: GachaAppProps) {
 
   const handleCoinInsert = async () => {
     if (phase !== 'idle' || allUsed) return;
+
+    // Check credits before allowing spin (needs 200 Credits)
+    if (credits < 200) {
+      sounds.error();
+      setInsufficientCredits(true);
+      setTimeout(() => setInsufficientCredits(false), 1000);
+      return;
+    }
+
     const nextIdx = getNextCapsuleIndex();
     if (nextIdx === null) return;
+
+    // Deduct 200 credits
+    deductCredits(200);
 
     sounds.coinDrop();
     setPhase('coin');
@@ -73,6 +86,7 @@ export default function GachaApp({ config }: GachaAppProps) {
     const cap = config.capsules[currentCapsule];
     spawnConfetti(cap.color);
     setShowMessage(true);
+    showNotification(`You opened a capsule: "${cap.message}" 🎁`);
     setTimeout(() => {
       setPhase('done');
     }, 200);
@@ -82,6 +96,13 @@ export default function GachaApp({ config }: GachaAppProps) {
     setCurrentCapsule(null);
     setShowMessage(false);
     setPhase('idle');
+  };
+
+  const handleCoinReturn = () => {
+    if (phase !== 'idle') return;
+    sounds.coinDrop();
+    addCredits(200);
+    handleReset();
   };
 
   const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -142,13 +163,13 @@ export default function GachaApp({ config }: GachaAppProps) {
 
       {/* Gacha Machine Container */}
       {!allUsed ? (
-        <div className="relative flex items-center justify-center" style={{ width: '380px', height: '460px' }}>
+        <div className="relative flex items-center justify-center w-full h-full max-w-[340px] max-h-[380px] my-auto">
           
           {/* Main Hand-drawn SVG Gacha Machine */}
           <motion.svg
-            width="350"
-            height="450"
             viewBox="0 0 350 450"
+            preserveAspectRatio="xMidYMid meet"
+            className="w-full h-auto max-h-[370px]"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
             animate={phase === 'shaking' ? {
@@ -330,7 +351,7 @@ export default function GachaApp({ config }: GachaAppProps) {
               <text x="54" y="406" fill="#FFF" fontSize="7" fontWeight="900">対象年齢6才以上</text>
 
               {/* Coin Return Badge (コイン返却ボタン) */}
-              <g style={{ cursor: 'pointer' }} onClick={handleReset}>
+              <g style={{ cursor: 'pointer' }} onClick={handleCoinReturn}>
                 <rect x="250" y="265" width="48" height="28" rx="4" fill="#FFF" stroke="#333" strokeWidth="2.5" />
                 <rect x="252" y="267" width="44" height="24" rx="2" fill="#0D7FCE" />
                 <text x="256" y="278" fill="#FFF" fontSize="7" fontWeight="900">コイン返却</text>
@@ -373,117 +394,59 @@ export default function GachaApp({ config }: GachaAppProps) {
               <rect x="220" y="361" width="65" height="45" rx="8" fill="#1F2937" />
               <path d="M 220,380 L 285,380" stroke="#333" strokeWidth="2" />
             </g>
-          </motion.svg>
 
-          {/* Interactive coin slot hit area (Flashes gently when ready) */}
-          {phase === 'idle' && !allUsed && (
-            <motion.div
-              onClick={handleCoinInsert}
-              animate={{ opacity: [0.6, 1, 0.6] }}
-              transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
-              style={{
-                position: 'absolute',
-                top: '254px',
-                left: '185px',
-                width: '64px',
-                height: '24px',
-                cursor: 'pointer',
-                borderRadius: '4px',
-                border: '2.5px solid #E15545',
-                background: 'rgba(255,215,0,0.15)',
-                zIndex: 10,
-              }}
-              title="Click here to insert coin!"
-            />
-          )}
+            {/* Interactive coin slot hit area (Flashes gently when ready) */}
+            {phase === 'idle' && !allUsed && (
+              <g style={{ cursor: 'pointer' }} onClick={handleCoinInsert}>
+                <motion.rect
+                  x="188"
+                  y="260"
+                  width="60"
+                  height="15"
+                  rx="3"
+                  fill="#FFEB3B"
+                  stroke="#E15545"
+                  strokeWidth="2"
+                  animate={{ opacity: [0.3, 0.8, 0.3] }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+                />
+                <text x="192" y="270" fill="#333" fontSize="8" fontWeight="800" style={{ letterSpacing: '0.2px', pointerEvents: 'none' }}>
+                  投入口▼
+                </text>
+              </g>
+            )}
 
-          {/* Falling Coin Animation */}
-          {phase === 'coin' && (
-            <motion.div
-              initial={{ y: 220, x: 22, opacity: 1, scale: 1 }}
-              animate={{ y: 270, opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.6, ease: 'easeIn' }}
-              style={{
-                position: 'absolute',
-                fontSize: 24,
-                zIndex: 15,
-              }}
-            >
-              🪙
-            </motion.div>
-          )}
+            {/* Falling Coin Animation */}
+            {phase === 'coin' && (
+              <motion.g
+                initial={{ y: -60, x: 215, opacity: 1, scale: 1 }}
+                animate={{ y: 20, opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.6, ease: 'easeIn' }}
+              >
+                <circle cx="0" cy="0" r="8" fill="#FBBF24" stroke="#333" strokeWidth="1.5" />
+                <text x="-4" y="3" fill="#333" fontSize="9" fontWeight="900">¥</text>
+              </motion.g>
+            )}
 
-          {/* Dispensed Capsule sitting in Chute */}
-          <AnimatePresence>
+            {/* Dispensed Capsule sitting in Chute inside SVG bounds */}
             {currentCapsule !== null && (phase === 'idle' || phase === 'done') && !showMessage && (
-              <motion.div
+              <motion.g
                 key="dispensed-capsule"
-                initial={{ y: -190, x: -72, opacity: 0, scale: 0.5 }}
-                animate={{ y: 0, x: 0, opacity: 1, scale: 1 }}
+                initial={{ y: 220, x: 196, opacity: 0, scale: 0.5 }}
+                animate={{ y: 384, x: 252, opacity: 1, scale: 1 }}
                 exit={{ scale: 0 }}
                 transition={{ type: 'spring', stiffness: 220, damping: 12 }}
                 onClick={handleCapsuleClick}
-                style={{
-                  position: 'absolute',
-                  top: '364px',
-                  left: '232px',
-                  width: '40px',
-                  height: '40px',
-                  cursor: 'pointer',
-                  zIndex: 20,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 24,
-                  filter: `drop-shadow(0 4px 8px ${config.capsules[currentCapsule].color}66)`,
-                }}
-                whileHover={{ scale: 1.15, rotate: 15 }}
-                whileTap={{ scale: 0.9 }}
-                title="Click capsule to open! 🌸"
+                style={{ cursor: 'pointer' }}
+                whileHover={{ scale: 1.15 }}
               >
-                {/* Hand-drawn look capsule representing output */}
-                <div style={{ position: 'relative', width: '36px', height: '36px' }}>
-                  {/* Top half */}
-                  <div style={{
-                    width: '36px',
-                    height: '18px',
-                    borderRadius: '18px 18px 0 0',
-                    background: config.capsules[currentCapsule].color,
-                    border: '3px solid #333',
-                    borderBottom: 'none',
-                  }} />
-                  {/* Bottom half */}
-                  <div style={{
-                    width: '36px',
-                    height: '18px',
-                    borderRadius: '0 0 18px 18px',
-                    background: '#FFF',
-                    border: '3px solid #333',
-                    borderTop: 'none',
-                  }} />
-                  {/* Separation line strip */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '16px',
-                    left: 0,
-                    width: '36px',
-                    height: '4px',
-                    background: '#333',
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    top: '6px',
-                    left: '6px',
-                    width: '8px',
-                    height: '4px',
-                    background: '#FFF',
-                    borderRadius: '50%',
-                    opacity: 0.6,
-                  }} />
-                </div>
-              </motion.div>
+                <circle cx="0" cy="0" r="16" fill={config.capsules[currentCapsule].color} stroke="#333" strokeWidth="2.5" />
+                <path d="M -16,0 A 16,16 0 0,0 16,0" fill="#FFF" stroke="#333" strokeWidth="2.5" />
+                <line x1="-16" y1="0" x2="16" y2="0" stroke="#333" strokeWidth="3" />
+                <circle cx="-5" cy="-6" r="2" fill="#FFF" opacity="0.6" />
+              </motion.g>
             )}
-          </AnimatePresence>
+          </motion.svg>
         </div>
       ) : (
         <motion.div

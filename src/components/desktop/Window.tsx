@@ -1,11 +1,13 @@
 'use client';
 import { useRef, useEffect, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useWindowStore } from '@/stores/windowStore';
+import { useWindowStore, AppType } from '@/stores/windowStore';
+import { useDesktopStore } from '@/stores/desktopStore';
 import { useSound } from '@/hooks/useSound';
 
 interface WindowProps {
   id: string;
+  appType?: AppType;
   title: string;
   icon: string;
   isMinimized: boolean;
@@ -21,6 +23,7 @@ interface WindowProps {
 
 export default function Window({
   id,
+  appType,
   title,
   icon,
   isMinimized,
@@ -34,14 +37,17 @@ export default function Window({
   onFocus,
 }: WindowProps) {
   const { updatePosition } = useWindowStore();
+  const { credits } = useDesktopStore();
   const sounds = useSound();
   const isDragging = useRef(false);
   const dragStart = useRef({ mouseX: 0, mouseY: 0, winX: 0, winY: 0 });
   const windowRef = useRef<HTMLDivElement>(null);
 
+  const isGacha = appType === 'gacha';
+
   // Drag logic via native mouse events for performance
   const handleTitleBarMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('.xp-btn')) return;
+    if ((e.target as HTMLElement).closest('.xp-btn') || (e.target as HTMLElement).closest('.gacha-btn')) return;
     isDragging.current = true;
     dragStart.current = {
       mouseX: e.clientX,
@@ -86,7 +92,7 @@ export default function Window({
     <AnimatePresence>
       <motion.div
         ref={windowRef}
-        className="xp-window absolute select-none"
+        className={`${isGacha ? 'desktop-window-gacha' : 'xp-window'} absolute select-none`}
         style={{
           left: position.x,
           top: position.y,
@@ -102,32 +108,31 @@ export default function Window({
       >
         {/* Title Bar */}
         <div
-          className={`xp-titlebar ${!isFocused ? 'xp-titlebar-inactive' : ''}`}
+          className={isGacha 
+            ? `gacha-titlebar ${!isFocused ? 'gacha-titlebar-inactive' : ''}` 
+            : `xp-titlebar ${!isFocused ? 'xp-titlebar-inactive' : ''}`
+          }
           onMouseDown={handleTitleBarMouseDown}
         >
-          <div className="xp-titlebar-text">
+          <div className={isGacha ? "gacha-titlebar-text" : "xp-titlebar-text"}>
             <span className="text-lg">{icon}</span>
             <span>{title}</span>
           </div>
-          <div className="xp-window-buttons">
-            <motion.button
-              className="xp-btn xp-btn-min"
+          <div className={isGacha ? "flex gap-1" : "xp-window-buttons"}>
+            <button
+              className={isGacha ? "gacha-btn-min" : "xp-btn xp-btn-min"}
               onClick={onMinimize}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
               title="Minimize"
             >
               _
-            </motion.button>
-            <motion.button
-              className="xp-btn xp-btn-close"
+            </button>
+            <button
+              className={isGacha ? "gacha-btn-close" : "xp-btn xp-btn-close"}
               onClick={handleClose}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
               title="Close"
             >
               ×
-            </motion.button>
+            </button>
           </div>
         </div>
 
@@ -135,13 +140,20 @@ export default function Window({
         <div
           className="overflow-hidden"
           style={{
-            height: size.height - 33, // subtract titlebar height
+            height: size.height - (isGacha ? 55 : 33), // subtract titlebar and statusbar height for Gacha
             display: 'flex',
             flexDirection: 'column',
           }}
         >
           {children}
         </div>
+
+        {/* Statusbar Footer for Gacha */}
+        {isGacha && (
+          <div className="gacha-statusbar select-none">
+            <span>🪙 Balance: {credits} Credits</span>
+          </div>
+        )}
       </motion.div>
     </AnimatePresence>
   );

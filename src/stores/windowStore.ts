@@ -43,7 +43,7 @@ interface WindowStore {
 
 const DEFAULT_SIZES: Record<AppType, { width: number; height: number }> = {
   mail: { width: 640, height: 480 },
-  gacha: { width: 420, height: 560 },
+  gacha: { width: 380, height: 480 },
   mixtape: { width: 480, height: 540 },
   ticket: { width: 440, height: 520 },
   game: { width: 480, height: 520 },

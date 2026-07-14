@@ -815,3 +815,89 @@ html, body {
     transform: none;
   }
 }
+
+/* Classic Win95/98 Gacha Window Chrome */
+.desktop-window-gacha {
+  background: #c0c0c0;
+  border-top: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #808080;
+  border-bottom: 2px solid #808080;
+  box-shadow: 
+    1px 1px 0px 0px #000000,
+    inset 1px 1px 0px 0px #dfdfdf,
+    inset -1px -1px 0px 0px #0a0a0a;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.gacha-titlebar {
+  background: #000080;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: move;
+  user-select: none;
+}
+
+.gacha-titlebar-inactive {
+  background: #808080;
+}
+
+.gacha-titlebar-text {
+  color: #ffffff;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gacha-btn-min, .gacha-btn-close {
+  background: #c0c0c0;
+  color: #000;
+  border-top: 1.5px solid #ffffff;
+  border-left: 1.5px solid #ffffff;
+  border-right: 1.5px solid #808080;
+  border-bottom: 1.5px solid #808080;
+  box-shadow: inset 1px 1px 0px #dfdfdf;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: bold;
+  width: 16px;
+  height: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 2px;
+}
+
+.gacha-btn-min:active, .gacha-btn-close:active {
+  border-top: 1.5px solid #808080;
+  border-left: 1.5px solid #808080;
+  border-right: 1.5px solid #ffffff;
+  border-bottom: 1.5px solid #ffffff;
+  padding-top: 2px;
+  padding-left: 2px;
+}
+
+.gacha-statusbar {
+  height: 22px;
+  background: #c0c0c0;
+  border-top: 2px solid #808080;
+  border-left: 2px solid #808080;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  color: #333;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+}
+
