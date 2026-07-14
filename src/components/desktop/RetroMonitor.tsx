@@ -48,7 +48,7 @@ export default function RetroMonitor({
   }, [aspectRatio, virtualWidth]);
 
   return (
-    <div className="flex flex-col items-center w-full max-w-[650px] mx-auto select-none">
+    <div className="flex flex-col items-center w-full mx-auto select-none">
       {/* Outer Monitor Bezel (Beige/Light Gray) */}
       <div 
         className="outer-monitor-bezel w-full p-4 rounded-xl flex flex-col"
