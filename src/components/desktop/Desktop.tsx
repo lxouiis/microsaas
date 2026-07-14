@@ -27,13 +27,13 @@ interface DesktopProps {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderApp(appType: AppType, config: any) {
+function renderApp(appType: AppType, config: any, fullConfig?: DesktopConfig) {
   switch (appType) {
     case 'mail': return <MailApp config={config} />;
     case 'gacha': return <GachaApp config={config} />;
     case 'mixtape': return <MixtapeApp config={config} />;
     case 'ticket': return <TicketApp config={config} />;
-    case 'game': return <GameApp config={config} />;
+    case 'game': return <GameApp config={config} secretPassword={fullConfig?.apps?.secret?.config?.password || '1234'} />;
     case 'photos': return <PhotosApp config={config} />;
     case 'calendar': return <CalendarApp config={config} />;
     case 'secret': return <SecretApp config={config} />;
@@ -85,34 +85,47 @@ export default function Desktop({ config }: DesktopProps) {
 
       {/* Desktop area (above taskbar) */}
       <div className="absolute inset-0" style={{ bottom: 40, overflow: 'hidden' }}>
-        {/* Desktop icons - left column */}
+        {/* Desktop icons grouped in side-by-side columns */}
         <div
           style={{
             position: 'absolute',
             top: 16,
             left: 12,
             display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
+            gap: 12,
           }}
         >
-          {enabledApps.map((appType) => (
-            <DesktopIcon key={appType} appType={appType} />
-          ))}
+          {/* Column 1: Mail, Gacha, Mixtape, Ticket, Game, Photos, Recycle Bin */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {enabledApps
+              .filter((appType) => appType !== 'calendar' && appType !== 'secret')
+              .map((appType) => (
+                <DesktopIcon key={appType} appType={appType} />
+              ))}
 
-          {/* Recycle bin always visible */}
-          <motion.div
-            className="desktop-icon"
-            whileHover={{ scale: 1.08, y: -2 }}
-            whileTap={{ scale: 0.92 }}
-            title="Recycle Bin"
-            style={{ cursor: 'default' }}
-          >
-            <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>
-              🗑️
-            </div>
-            <div className="desktop-icon-label">Recycle Bin</div>
-          </motion.div>
+            {/* Recycle bin always visible at the bottom of the first column */}
+            <motion.div
+              className="desktop-icon"
+              whileHover={{ scale: 1.08, y: -2 }}
+              whileTap={{ scale: 0.92 }}
+              title="Recycle Bin"
+              style={{ cursor: 'default' }}
+            >
+              <div style={{ width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38 }}>
+                🗑️
+              </div>
+              <div className="desktop-icon-label">Recycle Bin</div>
+            </motion.div>
+          </div>
+
+          {/* Column 2: Calendar, Secret */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {enabledApps
+              .filter((appType) => appType === 'calendar' || appType === 'secret')
+              .map((appType) => (
+                <DesktopIcon key={appType} appType={appType} />
+              ))}
+          </div>
         </div>
 
         {/* Star reward on desktop (earned by playing game) */}
@@ -184,7 +197,7 @@ export default function Desktop({ config }: DesktopProps) {
               onMaximize={() => toggleMaximizeWindow(win.id)}
               onFocus={() => focusWindow(win.id)}
             >
-              {renderApp(win.appType, appConfig)}
+              {renderApp(win.appType, appConfig, config)}
             </Window>
           );
         })}

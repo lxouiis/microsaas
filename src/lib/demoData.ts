@@ -133,8 +133,8 @@ Play this on a lazy afternoon and know that somewhere, someone is thinking of yo
     secret: {
       enabled: true,
       config: {
-        passwordHint: 'Hint: the thing I always say to you 💝',
-        password: 'love',
+        passwordHint: 'Complete the Roblox Obby game to find it! 🔑',
+        password: '8042',
         contentType: 'message',
         title: 'A Hidden Message For You 💌',
         content: `You found it! 🎉
@@ -161,7 +161,7 @@ export const APP_ICONS: Record<string, string> = {
   gacha: '🎰',
   mixtape: '🎵',
   ticket: '🎟',
-  game: '⭐',
+  game: '🎮',
   photos: '📸',
   calendar: '📅',
   secret: '🔒',
@@ -172,7 +172,7 @@ export const APP_TITLES: Record<string, string> = {
   gacha: 'Gacha',
   mixtape: 'Mixtape',
   ticket: 'Invitation',
-  game: 'Star Catcher',
+  game: 'Roblox Obby',
   photos: 'My Photos',
   calendar: 'Calendar',
   secret: 'Secret',

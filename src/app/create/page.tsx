@@ -351,12 +351,12 @@ export default function CreatePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🔒 Secret Folder</h3>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Password</span>
-                  <input className="xp-input" value={secretConfig.password || ''} onChange={(e) => updateAppConfig('secret', { password: e.target.value })} placeholder="love" style={{ borderRadius: 6 }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Secret Passcode (4-digit number)</span>
+                  <input className="xp-input" maxLength={4} value={secretConfig.password || ''} onChange={(e) => updateAppConfig('secret', { password: e.target.value.replace(/\D/g, '') })} placeholder="e.g. 5042" style={{ borderRadius: 6 }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Password Hint</span>
-                  <input className="xp-input" value={secretConfig.passwordHint || ''} onChange={(e) => updateAppConfig('secret', { passwordHint: e.target.value })} placeholder="Hint: the thing I always say..." style={{ borderRadius: 6 }} />
+                  <input className="xp-input" value={secretConfig.passwordHint || ''} onChange={(e) => updateAppConfig('secret', { passwordHint: e.target.value })} placeholder="Hint: Complete the Roblox Studio Obby game to find it!" style={{ borderRadius: 6 }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Secret Title</span>
@@ -371,13 +371,13 @@ export default function CreatePage() {
 
             {activeTab === 'game' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>⭐ Star Catcher Game</h3>
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🎮 Roblox Studio Obby</h3>
                 <div style={{ background: '#F0F8FF', borderRadius: 8, padding: 12, fontSize: 12, color: '#555', lineHeight: 1.6 }}>
-                  🎮 The recipient plays Catch Stars — clicking 10 falling stars in 30 seconds to win a ⭐ that appears permanently on their desktop!
+                  🎮 The recipient plays a 3D isometric Roblox platformer course. When they reach the finish line, they will be rewarded with the 4-digit Secret Folder password code you configured!
                 </div>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Win Message</span>
-                  <textarea className="xp-input" value={gameConfig.rewardMessage || ''} onChange={(e) => updateAppConfig('game', { rewardMessage: e.target.value })} rows={4} placeholder="You caught all the stars! Just like how you light up every room..." style={{ borderRadius: 6, resize: 'vertical' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Victory Message</span>
+                  <textarea className="xp-input" value={gameConfig.rewardMessage || ''} onChange={(e) => updateAppConfig('game', { rewardMessage: e.target.value })} rows={4} placeholder="You completed the obby! Excellent block jump calculations..." style={{ borderRadius: 6, resize: 'vertical' }} />
                 </label>
               </div>
             )}

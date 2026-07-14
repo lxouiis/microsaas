@@ -91,10 +91,11 @@ export default function SecretApp({ config }: SecretAppProps) {
             <input
               ref={inputRef}
               type="password"
+              maxLength={4}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Enter password..."
+              placeholder="Enter 4-digit key..."
               style={{
                 width: '100%',
                 background: 'rgba(255,255,255,0.08)',
