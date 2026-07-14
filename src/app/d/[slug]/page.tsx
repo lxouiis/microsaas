@@ -24,7 +24,7 @@ export default async function DesktopPage({ params }: Props) {
 
   if (!config) {
     // Fallback to demo data
-    config = { ...DEMO_DESKTOP };
+    config = { ...DEMO_DESKTOP, slug };
     config.recipientName = slug === 'demo' ? 'You' : slug.replace(/-/g, ' ');
   }
 

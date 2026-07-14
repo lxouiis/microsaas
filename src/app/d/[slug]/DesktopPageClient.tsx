@@ -13,7 +13,17 @@ export default function DesktopPageClient({ config }: DesktopPageClientProps) {
   const [bootDone, setBootDone] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [scale, setScale] = useState(1);
-  const [currentConfig, setCurrentConfig] = useState<DesktopConfig>(config);
+  const [currentConfig, setCurrentConfig] = useState<DesktopConfig>(() => {
+    if (typeof window !== 'undefined') {
+      const localData = localStorage.getItem(`desktop_${config.slug}`);
+      if (localData) {
+        try {
+          return JSON.parse(localData);
+        } catch {}
+      }
+    }
+    return config;
+  });
 
   const handleBootComplete = useCallback(() => {
     setBootDone(true);
