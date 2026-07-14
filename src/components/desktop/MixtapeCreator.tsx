@@ -339,11 +339,13 @@ export default function MixtapeCreator({ config, onChange }: MixtapeCreatorProps
             padding: '8px 0',
             fontSize: 12,
             fontWeight: 800,
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             borderBottom: activeTab === 'decorate' ? '3px solid #1F5FA6' : '3px solid transparent',
             color: activeTab === 'decorate' ? '#1F5FA6' : '#666',
             fontFamily: 'var(--font-nunito)',
             background: 'none',
-            border: 'none',
             cursor: 'pointer',
           }}
         >
@@ -356,11 +358,13 @@ export default function MixtapeCreator({ config, onChange }: MixtapeCreatorProps
             padding: '8px 0',
             fontSize: 12,
             fontWeight: 800,
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
             borderBottom: activeTab === 'tracks' ? '3px solid #1F5FA6' : '3px solid transparent',
             color: activeTab === 'tracks' ? '#1F5FA6' : '#666',
             fontFamily: 'var(--font-nunito)',
             background: 'none',
-            border: 'none',
             cursor: 'pointer',
           }}
         >

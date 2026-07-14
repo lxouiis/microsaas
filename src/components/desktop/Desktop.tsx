@@ -63,7 +63,8 @@ export default function Desktop({ config }: DesktopProps) {
     <div
       className="absolute inset-0 overflow-hidden"
       style={{
-        background: config.wallpaperType === 'image' ? `url(${wallpaper}) center/cover` : wallpaper,
+        backgroundImage: config.wallpaperType === 'image' ? `url(${wallpaper})` : wallpaper,
+        backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
         backgroundSize: 'cover',
       }}
