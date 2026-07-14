@@ -84,11 +84,56 @@ export function useSound() {
       playTone(300, 0.05, 'square', 0.08);
       setTimeout(() => playTone(250, 0.1, 'square', 0.06), 60);
     },
+    clunk: () => {
+      // Simulate heavy mechanical locking door sound
+      playTone(180, 0.1, 'triangle', 0.3);
+      setTimeout(() => playTone(120, 0.15, 'triangle', 0.25), 40);
+      setTimeout(() => playTone(90, 0.2, 'sine', 0.2), 80);
+    },
     star: () => {
       const notes = [784, 988, 1175, 1319, 1568];
       notes.forEach((note, i) => {
         setTimeout(() => playTone(note, 0.15, 'sine', 0.08), i * 80);
       });
+    },
+    playTapeHiss: () => {
+      if (!soundEnabled) return { stop: () => {} };
+      try {
+        const ctx = getCtx();
+        const bufferSize = 2 * ctx.sampleRate;
+        const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        const whiteNoise = ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        whiteNoise.loop = true;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 1200;
+        filter.Q.value = 0.6;
+
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = 0.015; // low-fidelity quiet background hiss
+
+        whiteNoise.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        whiteNoise.start();
+        return {
+          stop: () => {
+            try {
+              whiteNoise.stop();
+            } catch {}
+          }
+        };
+      } catch {
+        return { stop: () => {} };
+      }
     },
   };
 

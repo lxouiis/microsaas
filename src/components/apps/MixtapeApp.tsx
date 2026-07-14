@@ -1,5 +1,4 @@
-'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { MixtapeConfig } from '@/lib/types';
 import { useSound } from '@/hooks/useSound';
@@ -185,28 +184,104 @@ const CassetteTape = ({
   );
 };
 
+const SpindleGear = ({ spinning }: { spinning: boolean }) => {
+  return (
+    <motion.div
+      animate={spinning ? { rotate: 360 } : {}}
+      transition={spinning ? { repeat: Infinity, duration: 3, ease: 'linear' } : {}}
+      style={{
+        width: '34px',
+        height: '34px',
+        borderRadius: '50%',
+        backgroundColor: '#1E293B',
+        border: '3px solid #64748B',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+      }}
+    >
+      {/* Spindle teeth */}
+      {[0, 60, 120, 180, 240, 300].map((angle) => (
+        <div
+          key={angle}
+          style={{
+            position: 'absolute',
+            width: '5px',
+            height: '6px',
+            backgroundColor: '#64748B',
+            borderRadius: '1px',
+            transform: `rotate(${angle}deg) translateY(-14px)`,
+          }}
+        />
+      ))}
+      <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#0F172A' }} />
+    </motion.div>
+  );
+};
+
 export default function MixtapeApp({ config }: MixtapeAppProps) {
   const sounds = useSound();
-  const [phase, setPhase] = useState<'case' | 'open' | 'letter' | 'playing'>('case');
+  const [phase, setPhase] = useState<'case' | 'door-open' | 'inserting' | 'locking' | 'spinning' | 'playing'>('case');
   const [isPlaying, setIsPlaying] = useState(false);
-
-  const handleCassetteClick = async () => {
-    if (phase === 'case') {
-      sounds.cassette();
-      setPhase('open');
-      await delay(600);
-      setPhase('letter');
-    }
-  };
-
-  const handlePlay = () => {
-    sounds.cassette();
-    setIsPlaying(!isPlaying);
-    if (!isPlaying) setPhase('playing');
-    else setPhase('letter');
-  };
+  const [tapeHiss, setTapeHiss] = useState<{ stop: () => void } | null>(null);
 
   const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  // Clean up hiss audio on unmount
+  useEffect(() => {
+    return () => {
+      if (tapeHiss) {
+        tapeHiss.stop();
+      }
+    };
+  }, [tapeHiss]);
+
+  const startPlaybackSequence = async () => {
+    if (phase !== 'case') return;
+
+    // Stage 1 & 2: Prep & Door Open (0.0s - 0.5s)
+    sounds.cassette();
+    setPhase('door-open');
+    await delay(500);
+
+    // Stage 3: Drop (0.5s - 1.2s)
+    setPhase('inserting');
+    await delay(700);
+
+    // Stage 4: Lock (1.2s - 1.5s)
+    setPhase('locking');
+    sounds.clunk(); // play retro clunk sound
+    await delay(300);
+
+    // Stage 5: Spin (1.5s - 2.2s)
+    setPhase('spinning');
+    await delay(700);
+
+    // Stage 6: Play (2.2s+)
+    setPhase('playing');
+    const hiss = sounds.playTapeHiss();
+    setTapeHiss(hiss);
+    setIsPlaying(true);
+  };
+
+  const handleStop = async () => {
+    if (tapeHiss) {
+      tapeHiss.stop();
+      setTapeHiss(null);
+    }
+    setIsPlaying(false);
+    sounds.cassette();
+
+    // Reverse ejection timeline
+    setPhase('locking');
+    await delay(250);
+    setPhase('door-open');
+    await delay(400);
+    setPhase('inserting');
+    await delay(300);
+    setPhase('case');
+  };
 
   const spotifyEmbedId = config.spotifyUrl?.includes('playlist/')
     ? config.spotifyUrl.split('playlist/')[1]?.split('?')[0]
@@ -217,112 +292,264 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
   const doodleDataUrl = (config as any).doodle_data_url;
   const stickers = (config as any).stickers || [];
 
+  const cassetteVariants = {
+    case: {
+      y: 0,
+      scale: 1,
+      rotateX: 0,
+      opacity: 1,
+      zIndex: 40,
+    },
+    'door-open': {
+      y: 20,
+      scale: 0.82,
+      rotateX: -15,
+      opacity: 1,
+      zIndex: 40,
+      transition: { duration: 0.5, ease: [0.25, 0.8, 0.25, 1] }
+    },
+    inserting: {
+      y: 64,
+      scale: 0.65,
+      rotateX: -20,
+      opacity: 1,
+      zIndex: 20, // slips behind door (zIndex 30) but in front of spindles (zIndex 10)
+      transition: { duration: 0.7, ease: [0.25, 0.8, 0.25, 1] }
+    },
+    locking: {
+      y: 64,
+      scale: 0.65,
+      rotateX: 0,
+      opacity: 1,
+      zIndex: 20,
+      transition: { duration: 0.3, ease: 'easeOut' }
+    },
+    spinning: {
+      y: 64,
+      scale: 0.65,
+      rotateX: 0,
+      opacity: 1,
+      zIndex: 20,
+    },
+    playing: {
+      y: 64,
+      scale: 0.65,
+      rotateX: 0,
+      opacity: 1,
+      zIndex: 20,
+    }
+  };
+
+  const isReelsSpinning = phase === 'spinning' || phase === 'playing';
+
   return (
     <div
-      className="flex flex-col items-center h-full overflow-auto"
+      className="flex flex-col items-center h-full overflow-auto w-full"
       style={{
         background: 'linear-gradient(135deg, #F5F0E8 0%, #EDE0D4 100%)',
         padding: '20px',
         fontFamily: 'var(--font-nunito)',
       }}
     >
-      <AnimatePresence mode="wait">
-        {/* Phase 1: Cassette case closed */}
-        {phase === 'case' && (
-          <motion.div
-            key="case"
-            className="flex flex-col items-center gap-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -20 }}
-          >
-            <div style={{ fontSize: 13, color: '#888', textAlign: 'center' }}>Click to open the cassette... 🎵</div>
-            <motion.div
-              onClick={handleCassetteClick}
-              whileHover={{ scale: 1.04, rotate: 1 }}
-              whileTap={{ scale: 0.97 }}
-              style={{ cursor: 'pointer' }}
-            >
-              <CassetteTape
-                title={config.title}
-                patternId={patternId}
-                doodleDataUrl={doodleDataUrl}
-                stickers={stickers}
-                isPlaying={false}
-                scale={1}
-              />
-            </motion.div>
-            <div style={{ fontSize: 11, color: '#AAA' }}>Double-click to unwrap this mixtape</div>
-          </motion.div>
-        )}
+      {/* 3D Perspective Animation Container */}
+      <div 
+        style={{ 
+          perspective: '1000px', 
+          width: '100%', 
+          maxWidth: '360px', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          position: 'relative',
+          height: '320px',
+          marginBottom: '20px',
+        }}
+      >
+        {/* Layer 2: The Cassette tape itself */}
+        <motion.div
+          animate={phase}
+          variants={cassetteVariants as any}
+          style={{
+            position: 'absolute',
+            top: '10px',
+            cursor: phase === 'case' ? 'pointer' : 'default',
+          }}
+          onClick={() => {
+            if (phase === 'case') {
+              startPlaybackSequence();
+            }
+          }}
+        >
+          <CassetteTape
+            title={config.title}
+            patternId={patternId}
+            doodleDataUrl={doodleDataUrl}
+            stickers={stickers}
+            isPlaying={isReelsSpinning}
+            scale={1}
+          />
+        </motion.div>
 
-        {/* Phase 2: Case opening animation */}
-        {phase === 'open' && (
-          <motion.div
-            key="opening"
-            className="flex items-center justify-center"
-            style={{ height: 200 }}
-          >
-            <motion.div
-              animate={{ rotateX: 90 }}
-              transition={{ duration: 0.5 }}
-              style={{ fontSize: 48 }}
-            >
-              💿
-            </motion.div>
-          </motion.div>
-        )}
+        {/* The Tape Recorder Casing (Skeuomorphic Deck Casing) */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '10px',
+            width: '320px',
+            height: '170px',
+            backgroundColor: '#CBD5E1',
+            borderRadius: '12px',
+            border: '5px solid #475569',
+            boxShadow: '0 12px 28px rgba(0,0,0,0.2)',
+            zIndex: 10,
+            overflow: 'hidden',
+          }}
+        >
+          {/* Deck background styling */}
+          <div style={{ position: 'absolute', inset: 0, backgroundColor: '#94A3B8', border: '3px inset #475569' }} />
 
-        {/* Phase 3: Letter + playlist */}
-        {(phase === 'letter' || phase === 'playing') && (
-          <motion.div
-            key="letter"
-            className="w-full"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+          {/* Layer 1: Spindle Gears */}
+          <div 
+            style={{ 
+              position: 'absolute', 
+              top: '48px', 
+              left: '52px', 
+              right: '52px', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              zIndex: 10,
+              pointerEvents: 'none',
+            }}
           >
-            {/* Cassette (mini, now playing) */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                <div style={{ width: 192, height: 126, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  <CassetteTape
-                    title={config.title}
-                    patternId={patternId}
-                    doodleDataUrl={doodleDataUrl}
-                    stickers={stickers}
-                    isPlaying={isPlaying}
-                    scale={0.6}
-                  />
-                </div>
-                <motion.button
-                  onClick={handlePlay}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  style={{
-                    background: isPlaying ? '#FFB7C5' : '#4EBFBF',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: 44,
-                    height: 44,
-                    fontSize: 18,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
-                  }}
-                >
-                  {isPlaying ? '⏸' : '▶'}
-                </motion.button>
-              </div>
+            <SpindleGear spinning={isReelsSpinning} />
+            <SpindleGear spinning={isReelsSpinning} />
+          </div>
+
+          {/* Cassette Slot background shadows */}
+          <div 
+            style={{ 
+              position: 'absolute', 
+              top: '32px', 
+              left: '26px', 
+              right: '26px', 
+              height: '84px', 
+              backgroundColor: '#1E293B', 
+              border: '2px solid #334155',
+              borderRadius: '6px',
+              zIndex: 5,
+            }}
+          />
+
+          {/* Layer 3: Acrylic Door overlay */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '24px',
+              left: '20px',
+              right: '20px',
+              height: '100px',
+              backgroundColor: '#475569',
+              border: '3px solid #1E293B',
+              borderRadius: '8px 8px 2px 2px',
+              zIndex: 30,
+              transformStyle: 'preserve-3d',
+              transformOrigin: 'bottom',
+              transform: (phase === 'door-open' || phase === 'inserting') ? 'rotateX(-30deg)' : 'rotateX(0deg)',
+              transition: 'transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1)',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+            }}
+          >
+            {/* Acrylic transparent screen */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '12px',
+                left: '22px',
+                right: '22px',
+                bottom: '12px',
+                backgroundColor: 'rgba(241, 245, 249, 0.15)',
+                border: '2px solid #1E293B',
+                borderRadius: '4px',
+                boxShadow: 'inset 0 0 6px rgba(0,0,0,0.4)',
+                backdropFilter: 'blur(0.5px)',
+              }}
+            />
+            {/* Retro label print on door */}
+            <div style={{ position: 'absolute', bottom: '2px', width: '100%', textAlign: 'center', fontSize: '8px', color: '#94A3B8', fontFamily: 'var(--font-pixel)', letterSpacing: '0.5px' }}>
+              AUTO REVERSE · DOLBY B-C NR
             </div>
+          </div>
 
+          {/* Deck Control Mechanical Buttons */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '4px',
+              left: '20px',
+              right: '20px',
+              display: 'flex',
+              gap: '6px',
+              zIndex: 35,
+            }}
+          >
+            {[
+              { label: 'REC', color: '#EF4444', icon: '●', action: null, disabled: true },
+              { label: 'PLAY', color: '#10B981', icon: '▶', action: startPlaybackSequence, disabled: phase !== 'case' },
+              { label: 'STOP', color: '#64748B', icon: '■', action: handleStop, disabled: phase === 'case' || phase === 'door-open' || phase === 'inserting' },
+            ].map((btn) => (
+              <button
+                key={btn.label}
+                onClick={() => {
+                  if (btn.action && !btn.disabled) {
+                    btn.action();
+                  }
+                }}
+                disabled={btn.disabled}
+                style={{
+                  flex: 1,
+                  padding: '4px 0',
+                  fontSize: '9px',
+                  fontWeight: 900,
+                  backgroundColor: btn.disabled ? '#94A3B8' : btn.color,
+                  color: 'white',
+                  borderRadius: '4px',
+                  borderTop: '2px solid #FFF',
+                  borderLeft: '2px solid #FFF',
+                  borderBottom: '2.5px solid #1E293B',
+                  borderRight: '2.5px solid #1E293B',
+                  cursor: btn.disabled ? 'not-allowed' : 'pointer',
+                  opacity: btn.disabled ? 0.6 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '1px',
+                }}
+              >
+                <span>{btn.icon}</span>
+                <span style={{ fontSize: '7px' }}>{btn.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Eject / Insert helper prompt text */}
+        <div style={{ position: 'absolute', bottom: '-15px', fontSize: '10px', color: '#64748B', fontWeight: 600 }}>
+          {phase === 'case' ? 'Click cassette to insert & play' : phase === 'playing' ? 'Mixtape playing! ⚡' : 'Loading...'}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {(phase === 'playing') && (
+          <motion.div
+            key="letter-details"
+            className="w-full"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.5 }}
+          >
             {/* Handwritten letter */}
-            <motion.div
-              initial={{ opacity: 0, rotateX: -90 }}
-              animate={{ opacity: 1, rotateX: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
+            <div
               style={{
                 background: 'white',
                 borderRadius: 8,
@@ -342,7 +569,7 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
               }}>
                 {config.personalNote}
               </div>
-            </motion.div>
+            </div>
 
             {/* Track listing */}
             {config.songs && config.songs.length > 0 && (
@@ -355,7 +582,7 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
                     key={i}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + i * 0.1 }}
+                    transition={{ delay: 0.2 + i * 0.1 }}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -369,22 +596,13 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
                     </span>
                     <span style={{ fontSize: 12, flex: 1, fontWeight: 600, color: '#2A2A2A' }}>{song.title}</span>
                     <span style={{ fontSize: 11, color: '#888' }}>{song.artist}</span>
-                    {isPlaying && i === 0 && (
-                      <motion.span
-                        animate={{ opacity: [1, 0.3, 1] }}
-                        transition={{ repeat: Infinity, duration: 0.8 }}
-                        style={{ fontSize: 10 }}
-                      >
-                        ♪
-                      </motion.span>
-                    )}
                   </motion.div>
                 ))}
               </div>
             )}
 
             {/* Spotify embed */}
-            {spotifyEmbedId && isPlaying && (
+            {spotifyEmbedId && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -402,7 +620,7 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
               </motion.div>
             )}
 
-            {!spotifyEmbedId && config.youtubeUrl && isPlaying && (
+            {!spotifyEmbedId && config.youtubeUrl && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
