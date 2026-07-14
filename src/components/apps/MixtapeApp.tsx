@@ -294,49 +294,44 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
 
   const cassetteVariants = {
     case: {
-      y: 0,
-      scale: 1,
+      y: -140,
+      scale: 1.538,
       rotateX: 0,
       opacity: 1,
-      zIndex: 40,
+      transition: { duration: 0.5, ease: 'easeOut' }
     },
     'door-open': {
-      y: 20,
-      scale: 0.82,
+      y: -100,
+      scale: 1.3,
       rotateX: -15,
       opacity: 1,
-      zIndex: 40,
       transition: { duration: 0.5, ease: [0.25, 0.8, 0.25, 1] }
     },
     inserting: {
-      y: 64,
-      scale: 0.65,
+      y: 0,
+      scale: 1.0,
       rotateX: -20,
       opacity: 1,
-      zIndex: 20, // slips behind door (zIndex 30) but in front of spindles (zIndex 10)
       transition: { duration: 0.7, ease: [0.25, 0.8, 0.25, 1] }
     },
     locking: {
-      y: 64,
-      scale: 0.65,
+      y: 0,
+      scale: 1.0,
       rotateX: 0,
       opacity: 1,
-      zIndex: 20,
       transition: { duration: 0.3, ease: 'easeOut' }
     },
     spinning: {
-      y: 64,
-      scale: 0.65,
+      y: 0,
+      scale: 1.0,
       rotateX: 0,
       opacity: 1,
-      zIndex: 20,
     },
     playing: {
-      y: 64,
-      scale: 0.65,
+      y: 0,
+      scale: 1.0,
       rotateX: 0,
       opacity: 1,
-      zIndex: 20,
     }
   };
 
@@ -365,31 +360,6 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
           marginBottom: '20px',
         }}
       >
-        {/* Layer 2: The Cassette tape itself */}
-        <motion.div
-          animate={phase}
-          variants={cassetteVariants as any}
-          style={{
-            position: 'absolute',
-            top: '10px',
-            cursor: phase === 'case' ? 'pointer' : 'default',
-          }}
-          onClick={() => {
-            if (phase === 'case') {
-              startPlaybackSequence();
-            }
-          }}
-        >
-          <CassetteTape
-            title={config.title}
-            patternId={patternId}
-            doodleDataUrl={doodleDataUrl}
-            stickers={stickers}
-            isPlaying={isReelsSpinning}
-            scale={1}
-          />
-        </motion.div>
-
         {/* The Tape Recorder Casing (Skeuomorphic Deck Casing) */}
         <div
           style={{
@@ -402,11 +372,11 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
             border: '5px solid #475569',
             boxShadow: '0 12px 28px rgba(0,0,0,0.2)',
             zIndex: 10,
-            overflow: 'hidden',
+            overflow: 'visible', // Ensure the floating cassette tape doesn't get clipped when translated upwards!
           }}
         >
           {/* Deck background styling */}
-          <div style={{ position: 'absolute', inset: 0, backgroundColor: '#94A3B8', border: '3px inset #475569' }} />
+          <div style={{ position: 'absolute', inset: 0, backgroundColor: '#94A3B8', border: '3px inset #475569', borderRadius: '6px' }} />
 
           {/* Layer 1: Spindle Gears */}
           <div 
@@ -440,6 +410,40 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
             }}
           />
 
+          {/* Layer 2: The Cassette tape itself (positioned inside the slot area) */}
+          <motion.div
+            animate={phase}
+            variants={cassetteVariants as any}
+            style={{
+              position: 'absolute',
+              top: '32px',
+              left: '26px',
+              width: '268px',
+              height: '84px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 20, // Sit between Spindles (10) and Door (30)
+              cursor: phase === 'case' ? 'pointer' : 'default',
+            }}
+            onClick={() => {
+              if (phase === 'case') {
+                startPlaybackSequence();
+              }
+            }}
+          >
+            <div style={{ transform: 'scale(0.65)', transformOrigin: 'center center', flexShrink: 0 }}>
+              <CassetteTape
+                title={config.title}
+                patternId={patternId}
+                doodleDataUrl={doodleDataUrl}
+                stickers={stickers}
+                isPlaying={isReelsSpinning}
+                scale={1}
+              />
+            </div>
+          </motion.div>
+
           {/* Layer 3: Acrylic Door overlay */}
           <div
             style={{
@@ -451,12 +455,13 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
               backgroundColor: '#475569',
               border: '3px solid #1E293B',
               borderRadius: '8px 8px 2px 2px',
-              zIndex: 30,
+              zIndex: 30, // Stacked on top of Cassette (20)
               transformStyle: 'preserve-3d',
               transformOrigin: 'bottom',
               transform: (phase === 'door-open' || phase === 'inserting') ? 'rotateX(-30deg)' : 'rotateX(0deg)',
               transition: 'transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1)',
               boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              pointerEvents: 'none',
             }}
           >
             {/* Acrylic transparent screen */}
