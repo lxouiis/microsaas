@@ -10,6 +10,7 @@ type TabType = 'basic' | 'mail' | 'gacha' | 'mixtape' | 'ticket' | 'photos' | 'c
 import { saveDesktop } from '@/app/actions';
 import Desktop from '@/components/desktop/Desktop';
 import RetroMonitor from '@/components/desktop/RetroMonitor';
+import MixtapeCreator from '@/components/desktop/MixtapeCreator';
 
 export default function CreatePage() {
   const [config, setConfig] = useState<DesktopConfig>({ ...DEMO_DESKTOP, slug: '', id: '' });
@@ -285,19 +286,11 @@ export default function CreatePage() {
 
             {activeTab === 'mixtape' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🎵 Mixtape</h3>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Mixtape Title</span>
-                  <input className="xp-input" value={mixtapeConfig.title || ''} onChange={(e) => updateAppConfig('mixtape', { title: e.target.value })} placeholder="Songs That Remind Me Of You" style={{ borderRadius: 6 }} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Personal Note</span>
-                  <textarea className="xp-input" value={mixtapeConfig.personalNote || ''} onChange={(e) => updateAppConfig('mixtape', { personalNote: e.target.value })} rows={4} placeholder="Every time I hear these songs..." style={{ borderRadius: 6, resize: 'vertical' }} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Spotify Playlist URL</span>
-                  <input className="xp-input" value={mixtapeConfig.spotifyUrl || ''} onChange={(e) => updateAppConfig('mixtape', { spotifyUrl: e.target.value })} placeholder="https://open.spotify.com/playlist/..." style={{ borderRadius: 6 }} />
-                </label>
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🎵 Mixtape Studio</h3>
+                <MixtapeCreator 
+                  config={mixtapeConfig}
+                  onChange={(updated) => updateAppConfig('mixtape', updated)}
+                />
               </div>
             )}
 
