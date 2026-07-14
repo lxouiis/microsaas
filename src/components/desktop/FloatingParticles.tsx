@@ -38,7 +38,7 @@ export default function FloatingParticles() {
             userSelect: 'none',
           }}
           animate={{
-            y: [0, -(window?.innerHeight ?? 600) - 80],
+            y: [0, -(typeof window !== 'undefined' ? window.innerHeight : 600) - 80],
             opacity: [0, 0.7, 0.7, 0],
             rotate: [0, Math.random() > 0.5 ? 180 : -180],
             x: [(Math.random() - 0.5) * 40, (Math.random() - 0.5) * 80],

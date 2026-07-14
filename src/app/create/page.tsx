@@ -8,6 +8,8 @@ import { DEMO_DESKTOP } from '@/lib/demoData';
 type TabType = 'basic' | 'mail' | 'gacha' | 'mixtape' | 'ticket' | 'photos' | 'calendar' | 'secret' | 'game' | 'appearance';
 
 import { saveDesktop } from '@/app/actions';
+import Desktop from '@/components/desktop/Desktop';
+import RetroMonitor from '@/components/desktop/RetroMonitor';
 
 export default function CreatePage() {
   const [config, setConfig] = useState<DesktopConfig>({ ...DEMO_DESKTOP, slug: '', id: '' });
@@ -387,79 +389,11 @@ export default function CreatePage() {
         <div style={{ flex: 1, background: '#F0F4FF', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
           <div style={{ fontSize: 13, color: '#888', marginBottom: 16, textAlign: 'center' }}>Live Preview</div>
 
-          {/* Mini desktop preview */}
-          <div style={{
-            background: '#DDD8C8',
-            border: '3px solid #A09888',
-            borderRadius: '10px 10px 3px 3px',
-            padding: 6,
-            boxShadow: '0 6px 24px rgba(0,0,0,0.2)',
-            width: 320,
-          }}>
-            <div style={{
-              background: config.wallpaperType === 'gradient' ? config.wallpaper : 'linear-gradient(135deg, #4EBFBF, #3AA0A0)',
-              borderRadius: 3,
-              height: 200,
-              padding: 8,
-              position: 'relative',
-              overflow: 'hidden',
-            }}>
-              {/* Icons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {(['mail', 'gacha', 'mixtape', 'ticket', 'game'] as const).map((appType) => (
-                  <div key={appType} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 3, padding: '2px 4px', fontSize: 14 }}>
-                      {appType === 'mail' ? '📧' : appType === 'gacha' ? '🎰' : appType === 'mixtape' ? '🎵' : appType === 'ticket' ? '🎟' : '⭐'}
-                    </div>
-                    <span style={{ fontSize: 8, color: 'white', fontWeight: 700, textShadow: '0 0 3px rgba(0,0,0,0.8)' }}>
-                      {appType === 'mail' ? 'Inbox' : appType === 'gacha' ? 'Gacha' : appType === 'mixtape' ? 'Mixtape' : appType === 'ticket' ? 'Invitation' : 'Star Catcher'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Sticky note */}
-              {config.stickyNote && (
-                <div style={{
-                  position: 'absolute',
-                  right: 6,
-                  top: 6,
-                  background: '#FFFF99',
-                  padding: '4px 6px',
-                  width: 80,
-                  fontSize: 7,
-                  fontFamily: 'var(--font-caveat)',
-                  color: '#3A3000',
-                  boxShadow: '1px 1px 3px rgba(0,0,0,0.2)',
-                }}>
-                  {config.stickyNote.slice(0, 40)}{config.stickyNote.length > 40 ? '...' : ''}
-                </div>
-              )}
-
-              {/* Taskbar */}
-              <div style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: 18,
-                background: 'linear-gradient(180deg, #3285C8, #1A5097)',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '0 4px',
-                gap: 4,
-              }}>
-                <div style={{ background: 'linear-gradient(180deg, #62B85E, #2E6E2A)', borderRadius: '5px 2px 2px 5px', padding: '1px 5px', fontSize: 6, color: 'white', fontWeight: 700 }}>
-                  🖥️ start
-                </div>
-                <div style={{ marginLeft: 'auto', fontSize: 6, color: 'white', opacity: 0.8 }}>
-                  {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              </div>
-            </div>
-            <div style={{ textAlign: 'center', fontSize: 8, color: '#888', padding: '4px 0 1px', fontFamily: 'var(--font-pixel)', letterSpacing: 1 }}>
-              DESKTOP DEAR · {config.recipientName || 'Your Name'}
-            </div>
+          {/* Skeuomorphic Retro Monitor wrapping the live interactive Desktop */}
+          <div className="w-full max-w-[550px] relative z-10 flex justify-center items-center">
+            <RetroMonitor virtualWidth={1280} virtualHeight={720} aspectRatio={16/9}>
+              <Desktop config={config} />
+            </RetroMonitor>
           </div>
 
           {/* Published URL */}
