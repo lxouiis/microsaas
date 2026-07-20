@@ -94,6 +94,7 @@ export default function CreatePage() {
   const secretConfig = config.apps.secret?.config || {};
   const gameConfig = config.apps.game?.config || {};
   const purrConfig = config.apps.purr?.config || {};
+  const photosConfig = config.apps.photos?.config || {};
   const musicConfig = config.music || { enabled: false };
 
   return (
@@ -332,7 +333,47 @@ export default function CreatePage() {
 
             {activeTab === 'calendar' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>📅 Calendar</h3>
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>📅 Memory Calendar</h3>
+                <div style={{ background: '#FFF5F7', borderRadius: 8, padding: 12, fontSize: 12, color: '#B04858', lineHeight: 1.5 }}>
+                  📅 Design an interactive Wall Desk Calendar with memory badge stamps, date unboxing cards, and countdown timers.
+                </div>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Calendar Title</span>
+                  <input className="xp-input" value={calendarConfig.title || ''} onChange={(e) => updateAppConfig('calendar', { title: e.target.value })} placeholder="Our Special Memory Dates 📅✨" style={{ borderRadius: 6 }} />
+                </label>
+
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>Calendar Theme Palette</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                    {[
+                      { id: 'rose', label: 'Rose', color: '#E8B4B8' },
+                      { id: 'sage', label: 'Sage', color: '#A8B89A' },
+                      { id: 'cream', label: 'Cream', color: '#E8DCC8' },
+                      { id: 'lavender', label: 'Lavender', color: '#C4B4E0' },
+                      { id: 'butter', label: 'Butter', color: '#F5E6B8' },
+                      { id: 'slate', label: 'Slate', color: '#B0B8C4' },
+                    ].map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => updateAppConfig('calendar', { palette: p.id })}
+                        style={{
+                          background: p.color,
+                          border: (calendarConfig.palette || 'rose') === p.id ? '2px solid #1A1A1A' : '1px solid #DDD',
+                          borderRadius: 6,
+                          padding: '6px',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: '#222',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div style={{ display: 'flex', gap: 8 }}>
                   <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Year</span>
@@ -343,17 +384,72 @@ export default function CreatePage() {
                     <input type="number" min={1} max={12} className="xp-input" value={calendarConfig.month || 7} onChange={(e) => updateAppConfig('calendar', { month: parseInt(e.target.value) })} style={{ borderRadius: 6 }} />
                   </label>
                   <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Day</span>
-                    <input type="number" min={1} max={31} className="xp-input" value={calendarConfig.highlightedDay || 1} onChange={(e) => updateAppConfig('calendar', { highlightedDay: parseInt(e.target.value) })} style={{ borderRadius: 6 }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Main Day</span>
+                    <input type="number" min={1} max={31} className="xp-input" value={calendarConfig.highlightedDay || 13} onChange={(e) => updateAppConfig('calendar', { highlightedDay: parseInt(e.target.value) })} style={{ borderRadius: 6 }} />
                   </label>
                 </div>
+
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Memory Title</span>
-                  <input className="xp-input" value={calendarConfig.memoryTitle || ''} onChange={(e) => updateAppConfig('calendar', { memoryTitle: e.target.value })} placeholder="Our First Coffee ☕" style={{ borderRadius: 6 }} />
+                  <input className="xp-input" value={calendarConfig.memoryTitle || ''} onChange={(e) => updateAppConfig('calendar', { memoryTitle: e.target.value })} placeholder="The Day This Was Made For You 💌" style={{ borderRadius: 6 }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Memory Text</span>
-                  <textarea className="xp-input" value={calendarConfig.memoryText || ''} onChange={(e) => updateAppConfig('calendar', { memoryText: e.target.value })} rows={4} placeholder="Write about this special day..." style={{ borderRadius: 6, resize: 'vertical' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Memory Note</span>
+                  <textarea className="xp-input" value={calendarConfig.memoryText || ''} onChange={(e) => updateAppConfig('calendar', { memoryText: e.target.value })} rows={3} placeholder="Write about this special day..." style={{ borderRadius: 6, resize: 'vertical' }} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Memory Photo URL (optional)</span>
+                  <input className="xp-input" value={calendarConfig.memoryPhotoUrl || ''} onChange={(e) => updateAppConfig('calendar', { memoryPhotoUrl: e.target.value })} placeholder="https://images.unsplash.com/photo-1516912481808-3406841bd33c?w=600&q=80" style={{ borderRadius: 6 }} />
+                </label>
+              </div>
+            )}
+
+            {activeTab === 'photos' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>📸 Photo Album Scrapbook</h3>
+                <div style={{ background: '#FDF8F0', borderRadius: 8, padding: 12, fontSize: 12, color: '#8A6D3B', lineHeight: 1.5 }}>
+                  📖 Design an interactive 3D Photo Scrapbook with polaroid secret backs, handwriting captions, and ambient music.
+                </div>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Album Title</span>
+                  <input className="xp-input" value={photosConfig.albumTitle || ''} onChange={(e) => updateAppConfig('photos', { albumTitle: e.target.value })} placeholder="Our Memory Scrapbook 📖✨" style={{ borderRadius: 6 }} />
+                </label>
+
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>Scrapbook Theme Palette</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                    {[
+                      { id: 'sage', label: 'Sage', color: '#A8B89A' },
+                      { id: 'cream', label: 'Cream', color: '#E8DCC8' },
+                      { id: 'rose', label: 'Rose', color: '#E8B4B8' },
+                      { id: 'lavender', label: 'Lavender', color: '#C4B4E0' },
+                      { id: 'butter', label: 'Butter', color: '#F5E6B8' },
+                      { id: 'slate', label: 'Slate', color: '#B0B8C4' },
+                    ].map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => updateAppConfig('photos', { palette: p.id })}
+                        style={{
+                          background: p.color,
+                          border: photosConfig.palette === p.id ? '2px solid #1A1A1A' : '1px solid #DDD',
+                          borderRadius: 6,
+                          padding: '6px',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: '#222',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Ambient Background Music URL</span>
+                  <input className="xp-input" value={photosConfig.musicUrl || ''} onChange={(e) => updateAppConfig('photos', { musicUrl: e.target.value })} placeholder="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" style={{ borderRadius: 6 }} />
                 </label>
               </div>
             )}

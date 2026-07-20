@@ -71,22 +71,64 @@ export interface GameConfig {
   rewardMessage: string;
 }
 
+export interface PhotoItem {
+  id?: string;
+  url: string;
+  caption: string;
+  date?: string;
+  location?: string;
+  secretNote?: string;
+  audioUrl?: string;
+  tapeStyle?: 'grid' | 'floral' | 'pastel' | 'clear' | 'none';
+  filter?: 'normal' | 'vintage' | 'grain' | 'glow' | 'bw';
+  sticker?: 'stamp' | 'heart' | 'ribbon' | 'star' | 'none';
+  rotation?: number;
+  x?: number;
+  y?: number;
+}
+
+export interface PhotoAlbumPage {
+  id: string;
+  title?: string;
+  layout: 'single' | 'grid2x2' | 'scrapbook' | 'journal';
+  photos: PhotoItem[];
+  journalText?: string;
+  bgPalette?: string;
+}
+
 export interface PhotosConfig {
-  photos: {
-    url: string;
-    caption: string;
-    rotation: number;
-    x: number;
-    y: number;
-  }[];
+  albumTitle?: string;
+  palette?: string;
+  musicUrl?: string;
+  pages?: PhotoAlbumPage[];
+  // Legacy fallback
+  photos?: PhotoItem[];
+}
+
+export interface MemoryDateItem {
+  id?: string;
+  day: number;
+  month?: number; // 1-12 (defaults to config.month)
+  year?: number;
+  icon?: string;
+  title: string;
+  text: string;
+  photoUrl?: string;
+  location?: string;
+  voiceUrl?: string;
+  tagColor?: string;
 }
 
 export interface CalendarConfig {
   year: number;
   month: number; // 1-12
-  highlightedDay: number;
-  memoryTitle: string;
-  memoryText: string;
+  palette?: string;
+  title?: string;
+  memories?: MemoryDateItem[];
+  // Backwards compatibility fallbacks:
+  highlightedDay?: number;
+  memoryTitle?: string;
+  memoryText?: string;
   memoryPhotoUrl?: string;
 }
 
