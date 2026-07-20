@@ -1,700 +1,860 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useDesktopStore } from '@/stores/desktopStore';
-import { useSound } from '@/hooks/useSound';
 
-interface ObbyBlock {
-  x: number;
-  y: number;
-  z: number;
-  type: 'normal' | 'lava' | 'checkpoint' | 'goal';
-}
+// ──────────────────────────────────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────────────────────────────────
+type Difficulty = 'easy' | 'medium' | 'hard';
+type Phase = 'select' | 'playing' | 'dead' | 'level_complete' | 'victory';
 
 interface GameAppProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   config: any;
   secretPassword?: string;
 }
 
-const OBBY_BLOCKS: ObbyBlock[] = [
-  { x: 0, y: 0, z: 0, type: 'normal' },
-  { x: 36, y: 0, z: 0, type: 'normal' },
-  { x: 72, y: 0, z: 8, type: 'normal' },
-  { x: 108, y: 0, z: 16, type: 'normal' },
-  { x: 144, y: 20, z: 16, type: 'lava' }, // LAVA block! Must jump over!
-  { x: 144, y: 56, z: 24, type: 'normal' },
-  { x: 108, y: 80, z: 32, type: 'checkpoint' }, // Checkpoint flag
-  { x: 72, y: 80, z: 32, type: 'normal' },
-  { x: 36, y: 80, z: 40, type: 'normal' },
-  { x: 0, y: 80, z: 48, type: 'normal' },
-  { x: -36, y: 56, z: 48, type: 'lava' }, // Second Lava block!
-  { x: -72, y: 32, z: 56, type: 'normal' },
-  { x: -108, y: 8, z: 64, type: 'normal' },
-  { x: -144, y: -16, z: 72, type: 'goal' }, // Golden Trophy goal platform
-];
+interface GS {
+  diff: Difficulty;
+  lvl: number;
+  tiles: number[][];
+  px: number;
+  py: number;
+  facing: number;   // 1 = right, -1 = left
+  got: number;      // hearts collected
+  total: number;    // hearts needed
+  doorOpen: boolean;
+  moves: number;    // total move count (drives toggle timing)
+  flash: number;    // frames left for death flash
+}
 
-export default function GameApp({ config, secretPassword = '1234' }: GameAppProps) {
-  const { earnStar } = useDesktopStore();
-  const sounds = useSound();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animFrameRef = useRef<number>(0);
+// ──────────────────────────────────────────────────────────────────────────────
+// Grid constants
+// ──────────────────────────────────────────────────────────────────────────────
+const TILE = 40;
+const COLS = 15;
+const ROWS = 11;
+const W    = COLS * TILE;   // 600
+const H    = ROWS * TILE;   // 440
 
-  // States
-  const [gameState, setGameState] = useState<'idle' | 'playing' | 'won' | 'lost'>('idle');
-  const [isOof, setIsOof] = useState(false);
-  const [activeCheckpoint, setActiveCheckpoint] = useState<number>(-1);
-  const [confetti, setConfetti] = useState<{ id: number; x: number; y: number; emoji: string }[]>([]);
+// Tile IDs
+const VOID = 0, FLOOR = 1, WALL = 2, HEART = 3, SPIKE = 4, TOGGLE = 5, DOOR = 6, START = 7;
 
-  // Keyboard controls key status
-  const keysPressed = useRef<Record<string, boolean>>({});
+// Colour palette
+const C = {
+  bg:        '#0D1117',
+  f1:        '#7EC8C0',
+  f2:        '#6BB8B0',
+  wall:      '#2D3561',
+  wallT:     '#4A5290',
+  wallB:     '#1A1F40',
+  heart:     '#FF6B9D',
+  spike:     '#FF4444',
+  spikeBg:   '#3D1515',
+  toggle:    '#FF9900',
+  doorCl:    '#7B4F2E',
+  skin:      '#FFCBA4',
+  shirt:     '#4B9EFF',
+  pants:     '#222244',
+};
 
-  // Player state refs to avoid closure stale-state issues inside loops
-  const playerRef = useRef({
-    x: 0,
-    y: 0,
-    z: 12,
-    vx: 0,
-    vy: 0,
-    vz: 0,
-    grounded: true,
-    checkpoint: { x: 0, y: 0, z: 12 },
+// ──────────────────────────────────────────────────────────────────────────────
+// Level maps  (15 cols × 11 rows)
+// Legend: # wall  . floor  H heart  S spike  T toggle-spike  D door  P start
+// ──────────────────────────────────────────────────────────────────────────────
+const MAPS: Record<Difficulty, Array<{ name: string; rows: string[] }>> = {
+  easy: [
+    {
+      name: 'Hello ♡',
+      rows: [
+        '###############',
+        '#P.....H......#',
+        '#.H...........#',
+        '#.............#',
+        '#......H......#',
+        '#.............#',
+        '#...H.........#',
+        '#.............#',
+        '#..........H..#',
+        '#............D#',
+        '###############',
+      ],
+    },
+    {
+      name: 'Garden Path ♡',
+      rows: [
+        '###############',
+        '#P.H..........#',
+        '#.............#',
+        '#.......H.....#',
+        '######.########',
+        '#.....H.......#',
+        '#.............#',
+        '#.H...........#',
+        '#..........H..#',
+        '#...........D.#',
+        '###############',
+      ],
+    },
+    {
+      name: 'Spike Garden ♡',
+      rows: [
+        '###############',
+        '#P..H.........#',
+        '#.............#',
+        '#..S..H.......#',
+        '#.............#',
+        '#.......S.....#',
+        '#.H...........#',
+        '#.............#',
+        '#.........H...#',
+        '#...S.......D.#',
+        '###############',
+      ],
+    },
+  ],
+
+  medium: [
+    {
+      name: 'Two Rooms',
+      rows: [
+        '###############',
+        '#P.S..........#',
+        '#.............#',
+        '#.H...S.......#',
+        '###.###########',
+        '#.....H.....H.#',
+        '#.S...........#',
+        '#.H...........#',
+        '#.........H...#',
+        '#...........D.#',
+        '###############',
+      ],
+    },
+    {
+      name: 'The Field',
+      rows: [
+        '###############',
+        '#P.....S....H.#',
+        '#.H...........#',
+        '#.......S.H...#',
+        '#.............#',
+        '#...S.........#',
+        '#.H...........#',
+        '#.........S...#',
+        '#.......H.....#',
+        '#...H...S...D.#',
+        '###############',
+      ],
+    },
+    {
+      name: 'Danger Zone',
+      rows: [
+        '###############',
+        '#P.S..H.......#',
+        '#.............#',
+        '#.H.....S.....#',
+        '#.........S...#',
+        '#.......H.....#',
+        '#.S...........#',
+        '#.......S.....#',
+        '#.H.....H.....#',
+        '#.....S...H.D.#',
+        '###############',
+      ],
+    },
+  ],
+
+  hard: [
+    {
+      name: 'Pulse',
+      rows: [
+        '###############',
+        '#P.T..........#',
+        '#.............#',
+        '#.H...T.......#',
+        '###.###########',
+        '#.....H.....H.#',
+        '#.T...........#',
+        '#.H...........#',
+        '#.........H...#',
+        '#...........D.#',
+        '###############',
+      ],
+    },
+    {
+      name: 'Heartbeat',
+      rows: [
+        '###############',
+        '#P.....T....H.#',
+        '#.H...........#',
+        '#.......T.H...#',
+        '#.............#',
+        '#...T.........#',
+        '#.H...........#',
+        '#.........T...#',
+        '#.......H.....#',
+        '#...H...T...D.#',
+        '###############',
+      ],
+    },
+    {
+      name: 'Chaos Theory',
+      rows: [
+        '###############',
+        '#P.T..H.......#',
+        '#.............#',
+        '#.H.....T.....#',
+        '#.........T...#',
+        '#.......H.....#',
+        '#.T...........#',
+        '#.......T.....#',
+        '#.H.....H.....#',
+        '#.....T...H.D.#',
+        '###############',
+      ],
+    },
+  ],
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Parse a string-map → 2D number grid
+// ──────────────────────────────────────────────────────────────────────────────
+function parseRows(rows: string[]): number[][] {
+  return rows.map(row => {
+    const padded = row.padEnd(COLS, '#');
+    return [...padded.slice(0, COLS)].map(ch => {
+      switch (ch) {
+        case '.': return FLOOR;
+        case 'H': return HEART;
+        case 'S': return SPIKE;
+        case 'T': return TOGGLE;
+        case 'D': return DOOR;
+        case 'P': return START;
+        default:  return WALL;
+      }
+    });
   });
+}
 
-  // Smooth camera refs
-  const camRef = useRef({ x: 0, y: 0, z: 12 });
+// ──────────────────────────────────────────────────────────────────────────────
+// Canvas drawing helpers
+// ──────────────────────────────────────────────────────────────────────────────
+function drawTile(
+  ctx: CanvasRenderingContext2D,
+  type: number, x: number, y: number,
+  toggleOn: boolean, pulse: number, doorOpen: boolean,
+) {
+  const px = x * TILE, py = y * TILE;
+  const alt = (x + y) % 2 === 0;
 
-  const startGame = () => {
-    playerRef.current = {
-      x: 0,
-      y: 0,
-      z: 12,
-      vx: 0,
-      vy: 0,
-      vz: 0,
-      grounded: true,
-      checkpoint: { x: 0, y: 0, z: 12 },
-    };
-    camRef.current = { x: 0, y: 0, z: 12 };
-    keysPressed.current = {};
-    setGameState('playing');
-    setIsOof(false);
-    setActiveCheckpoint(-1);
+  const floor = () => {
+    ctx.fillStyle = alt ? C.f1 : C.f2;
+    ctx.fillRect(px, py, TILE, TILE);
   };
 
-  // Keyboard handlers
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      keysPressed.current[e.code] = true;
-    };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keysPressed.current[e.code] = false;
-    };
+  switch (type) {
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []);
-
-  // 3D Isometric Projection Helper
-  const project = (x: number, y: number, z: number, camX: number, camY: number, camZ: number, width: number, height: number) => {
-    const rx = x - camX;
-    const ry = y - camY;
-    const rz = z - camZ;
-
-    // Isometric formula: X rotates by cos(30deg) and Y rotates by -cos(30deg)
-    // screenX starts at canvas center
-    const screenX = width / 2 + (rx - ry) * Math.cos(Math.PI / 6);
-    const screenY = height / 2 + (rx + ry) * Math.sin(Math.PI / 6) - rz;
-
-    return { x: screenX, y: screenY };
-  };
-
-  // Render generic block cube in isometric
-  const drawCube = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    z: number,
-    sizeX: number,
-    sizeY: number,
-    sizeZ: number,
-    colorTop: string,
-    colorLeft: string,
-    colorRight: string,
-    camX: number,
-    camY: number,
-    camZ: number,
-    width: number,
-    height: number,
-    hasStuds: boolean = false
-  ) => {
-    const topCenter = project(x, y, z + sizeZ / 2, camX, camY, camZ, width, height);
-
-    const dxX = (sizeX / 2) * Math.cos(Math.PI / 6);
-    const dxY = (sizeX / 2) * Math.sin(Math.PI / 6);
-    const dyX = -(sizeY / 2) * Math.cos(Math.PI / 6);
-    const dyY = (sizeY / 2) * Math.sin(Math.PI / 6);
-    const dz = sizeZ;
-
-    // Top face vertices
-    const t1 = { x: topCenter.x, y: topCenter.y };
-    const t2 = { x: topCenter.x + dxX, y: topCenter.y + dxY };
-    const t3 = { x: topCenter.x + dxX + dyX, y: topCenter.y + dxY + dyY };
-    const t4 = { x: topCenter.x + dyX, y: topCenter.y + dyY };
-
-    // Bottom face vertices
-    const b2 = { x: t2.x, y: t2.y + dz };
-    const b3 = { x: t3.x, y: t3.y + dz };
-    const b4 = { x: t4.x, y: t4.y + dz };
-
-    // Draw Top Face
-    ctx.fillStyle = colorTop;
-    ctx.beginPath();
-    ctx.moveTo(t1.x, t1.y);
-    ctx.lineTo(t2.x, t2.y);
-    ctx.lineTo(t3.x, t3.y);
-    ctx.lineTo(t4.x, t4.y);
-    ctx.closePath();
-    ctx.fill();
-
-    // Subtle outline
-    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-
-    // Draw Studs (Roblox branding element)
-    if (hasStuds) {
-      ctx.fillStyle = 'rgba(255,255,255,0.22)';
-      const studPositions = [
-        { x: topCenter.x - 7, y: topCenter.y + 4 },
-        { x: topCenter.x + 7, y: topCenter.y + 4 },
-        { x: topCenter.x, y: topCenter.y + 1 },
-        { x: topCenter.x, y: topCenter.y + 7 },
-      ];
-      studPositions.forEach((pos) => {
-        ctx.beginPath();
-        ctx.ellipse(pos.x, pos.y, 2.5, 1.25, 0, 0, Math.PI * 2);
-        ctx.fill();
-      });
+    case WALL: {
+      ctx.fillStyle = C.wall;
+      ctx.fillRect(px, py, TILE, TILE);
+      // bevel highlights
+      ctx.fillStyle = C.wallT;
+      ctx.fillRect(px, py, TILE, 4);
+      ctx.fillRect(px, py, 4, TILE);
+      ctx.fillStyle = C.wallB;
+      ctx.fillRect(px, py + TILE - 4, TILE, 4);
+      ctx.fillRect(px + TILE - 4, py, 4, TILE);
+      // inner pixel dot texture
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(px + 10, py + 10, 6, 6);
+      ctx.fillRect(px + 24, py + 24, 6, 6);
+      break;
     }
 
-    // Draw Left Face
-    ctx.fillStyle = colorLeft;
-    ctx.beginPath();
-    ctx.moveTo(t4.x, t4.y);
-    ctx.lineTo(t3.x, t3.y);
-    ctx.lineTo(b3.x, b3.y);
-    ctx.lineTo(b4.x, b4.y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    case FLOOR: case START: {
+      floor();
+      break;
+    }
 
-    // Draw Right Face
-    ctx.fillStyle = colorRight;
-    ctx.beginPath();
-    ctx.moveTo(t3.x, t3.y);
-    ctx.lineTo(t2.x, t2.y);
-    ctx.lineTo(b2.x, b2.y);
-    ctx.lineTo(b3.x, b3.y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  };
+    case VOID: {
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(px, py, TILE, TILE);
+      break;
+    }
 
-  // Main game physics & animation loop
-  useEffect(() => {
-    if (gameState !== 'playing') return;
+    case HEART: {
+      floor();
+      const s = 0.85 + Math.sin(pulse) * 0.12;
+      const cx = px + TILE / 2, cy = py + TILE / 2;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(s, s);
+      ctx.beginPath();
+      ctx.moveTo(0, -6);
+      ctx.bezierCurveTo(0, -13, -12, -13, -12, -4);
+      ctx.bezierCurveTo(-12, 4, 0, 12, 0, 14);
+      ctx.bezierCurveTo(0, 12, 12, 4, 12, -4);
+      ctx.bezierCurveTo(12, -13, 0, -13, 0, -6);
+      ctx.fillStyle = C.heart;
+      ctx.fill();
+      // shine
+      ctx.beginPath();
+      ctx.arc(-4, -5, 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.38)';
+      ctx.fill();
+      ctx.restore();
+      break;
+    }
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
-
-    const loop = () => {
-      // 1. Gather player inputs
-      const player = playerRef.current;
-      const keys = keysPressed.current;
-
-      const prevX = player.x;
-      const prevY = player.y;
-
-      let dx = 0;
-      let dy = 0;
-      if (keys['KeyW'] || keys['ArrowUp']) { dx -= 1; dy -= 1; }
-      if (keys['KeyS'] || keys['ArrowDown']) { dx += 1; dy += 1; }
-      if (keys['KeyA'] || keys['ArrowLeft']) { dx -= 1; dy += 1; }
-      if (keys['KeyD'] || keys['ArrowRight']) { dx += 1; dy -= 1; }
-
-      // Normalization of horizontal speed
-      const len = Math.sqrt(dx * dx + dy * dy);
-      const moveSpeed = 1.6;
-      if (len > 0) {
-        player.vx = (dx / len) * moveSpeed;
-        player.vy = (dy / len) * moveSpeed;
-      } else {
-        player.vx *= 0.75;
-        player.vy *= 0.75;
+    case SPIKE: {
+      ctx.fillStyle = C.spikeBg;
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = C.spike;
+      for (let i = 0; i < 3; i++) {
+        const sx = px + 5 + i * 12;
+        ctx.beginPath();
+        ctx.moveTo(sx, py + TILE - 2);
+        ctx.lineTo(sx + 6, py + 5);
+        ctx.lineTo(sx + 12, py + TILE - 2);
+        ctx.closePath();
+        ctx.fill();
       }
+      // spike base bar
+      ctx.fillStyle = '#661111';
+      ctx.fillRect(px + 2, py + TILE - 6, TILE - 4, 4);
+      break;
+    }
 
-      // Jump request
-      if (keys['Space'] && player.grounded) {
-        player.vz = 4.2;
-        player.grounded = false;
-        sounds.click();
-      }
-
-      // Apply Gravity
-      if (!player.grounded) {
-        player.vz -= 0.22;
-      }
-
-      // Apply positions
-      player.x += player.vx;
-      player.y += player.vy;
-      player.z += player.vz;
-
-      // Gravity and Ground collision loop
-      let landed = false;
-      let landedBlock: ObbyBlock | null = null;
-
-      for (let i = 0; i < OBBY_BLOCKS.length; i++) {
-        const b = OBBY_BLOCKS[i];
-        // Bounding box size check
-        const overlapX = Math.abs(player.x - b.x) < 22; // 6 player radius + 16 block radius
-        const overlapY = Math.abs(player.y - b.y) < 22;
-
-        if (overlapX && overlapY) {
-          // Check landing on top of block
-          const blockTop = b.z + 8;
-          const playerFeet = player.z - 4; // player legs bottom is z - 4
-
-          if (player.vz <= 0 && Math.abs(playerFeet - blockTop) < 6) {
-            player.z = blockTop + 4;
-            player.vz = 0;
-            player.grounded = true;
-            landed = true;
-            landedBlock = b;
-            break;
-          }
-
-          // Check side collision to prevent phasing through platforms
-          const blockBottom = b.z - 8;
-          if (playerFeet < blockTop && player.z + 16 > blockBottom) {
-            player.x = prevX;
-            player.y = prevY;
-            player.vx = 0;
-            player.vy = 0;
-          }
-        }
-      }
-
-      if (!landed) {
-        player.grounded = false;
-      }
-
-      // Trigger landing properties (lava resets, checkpoints save, goal wins)
-      if (landedBlock) {
-        if (landedBlock.type === 'lava' && !isOof) {
-          // OOF sequence!
-          setIsOof(true);
-          sounds.error();
-          player.vx = 0;
-          player.vy = 0;
-          player.vz = 0;
-          setTimeout(() => {
-            player.x = player.checkpoint.x;
-            player.y = player.checkpoint.y;
-            player.z = player.checkpoint.z;
-            setIsOof(false);
-          }, 600);
-        } else if (landedBlock.type === 'checkpoint') {
-          player.checkpoint = { x: landedBlock.x, y: landedBlock.y, z: landedBlock.z + 12 };
-          const checkpointIdx = OBBY_BLOCKS.indexOf(landedBlock);
-          if (activeCheckpoint !== checkpointIdx) {
-            setActiveCheckpoint(checkpointIdx);
-            sounds.star();
-          }
-        } else if (landedBlock.type === 'goal') {
-          // Win game!
-          sounds.unlock();
-          setGameState('won');
-          earnStar();
-          setConfetti(
-            Array.from({ length: 25 }, (_, i) => ({
-              id: i,
-              x: Math.random() * 100,
-              y: Math.random() * 40 + 20,
-              emoji: ['🏆', '✨', '👑', '🎉', '🌟'][i % 5],
-            }))
-          );
-          setTimeout(() => setConfetti([]), 3500);
-          return; // Stop animation loop
-        }
-      }
-
-      // Reset if player falls into the endless space void
-      if (player.z < -100 && !isOof) {
-        setIsOof(true);
-        sounds.error();
-        setTimeout(() => {
-          player.x = player.checkpoint.x;
-          player.y = player.checkpoint.y;
-          player.z = player.checkpoint.z;
-          player.vx = 0;
-          player.vy = 0;
-          player.vz = 0;
-          setIsOof(false);
-        }, 400);
-      }
-
-      // Smooth Camera tracking interpolations
-      const cam = camRef.current;
-      cam.x += (player.x - cam.x) * 0.08;
-      cam.y += (player.y - cam.y) * 0.08;
-      cam.z += (player.z - cam.z) * 0.08;
-
-      // 2. Draw loop render operations
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Deep sky stars background
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
-      for (let i = 0; i < 40; i++) {
-        const starX = (i * 97) % canvas.width;
-        const starY = (i * 73 + Date.now() * 0.005) % canvas.height;
-        ctx.fillRect(starX, starY, 1.5, 1.5);
-      }
-
-      // Depth sorting of elements (blocks + player)
-      const renderQueue: Array<{
-        type: 'block' | 'player';
-        depth: number;
-        data: any;
-      }> = [];
-
-      OBBY_BLOCKS.forEach((block) => {
-        renderQueue.push({
-          type: 'block',
-          depth: (block.x + block.y) * 0.5 - block.z,
-          data: block,
-        });
-      });
-
-      if (!isOof) {
-        renderQueue.push({
-          type: 'player',
-          depth: (player.x + player.y) * 0.5 - player.z,
-          data: player,
-        });
-      }
-
-      // Sort lowest depth to highest (back to front)
-      renderQueue.sort((a, b) => a.depth - b.depth);
-
-      // Draw all queued elements
-      renderQueue.forEach((obj) => {
-        if (obj.type === 'block') {
-          const b: ObbyBlock = obj.data;
-          let colTop = '#94A3B8'; // default grey
-          let colLeft = '#64748B';
-          let colRight = '#475569';
-
-          if (b.type === 'lava') {
-            colTop = '#EF4444'; // Red hot lava
-            colLeft = '#DC2626';
-            colRight = '#991B1B';
-          } else if (b.type === 'checkpoint') {
-            colTop = '#3B82F6'; // Blue checkpoint
-            colLeft = '#2563EB';
-            colRight = '#1D4ED8';
-          } else if (b.type === 'goal') {
-            colTop = '#FBBF24'; // Gold goal
-            colLeft = '#D97706';
-            colRight = '#B45309';
-          }
-
-          drawCube(
-            ctx,
-            b.x,
-            b.y,
-            b.z,
-            32,
-            32,
-            16,
-            colTop,
-            colLeft,
-            colRight,
-            cam.x,
-            cam.y,
-            cam.z,
-            canvas.width,
-            canvas.height,
-            b.type !== 'goal'
-          );
-
-          // Add flag pole for checkpoint flag
-          if (b.type === 'checkpoint') {
-            const flagTop = project(b.x, b.y, b.z + 8, cam.x, cam.y, cam.z, canvas.width, canvas.height);
-            ctx.fillStyle = '#E2E8F0';
-            ctx.fillRect(flagTop.x - 1, flagTop.y - 18, 2, 18);
-            ctx.fillStyle = activeCheckpoint === OBBY_BLOCKS.indexOf(b) ? '#EF4444' : '#64748B';
-            ctx.beginPath();
-            ctx.moveTo(flagTop.x + 1, flagTop.y - 18);
-            ctx.lineTo(flagTop.x + 10, flagTop.y - 14);
-            ctx.lineTo(flagTop.x + 1, flagTop.y - 10);
-            ctx.closePath();
-            ctx.fill();
-          }
-
-          // Add golden trophy cup on top of goal block
-          if (b.type === 'goal') {
-            const cupPos = project(b.x, b.y, b.z + 10, cam.x, cam.y, cam.z, canvas.width, canvas.height);
-            ctx.fillStyle = '#FFE043';
-            ctx.beginPath();
-            ctx.arc(cupPos.x, cupPos.y - 12, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillRect(cupPos.x - 2, cupPos.y - 7, 4, 7);
-            ctx.fillRect(cupPos.x - 5, cupPos.y, 10, 2);
-          }
-        } else {
-          // Draw Roblox Noob player avatar
-          const p = obj.data;
-          
-          // Legs: Green blocky base
-          drawCube(ctx, p.x, p.y, p.z - 3, 10, 10, 6, '#4CAF50', '#388E3C', '#2E7D32', cam.x, cam.y, cam.z, canvas.width, canvas.height);
-          
-          // Torso: Blue blocky body
-          drawCube(ctx, p.x, p.y, p.z + 3, 12, 12, 8, '#1E3A8A', '#1D4ED8', '#1E40AF', cam.x, cam.y, cam.z, canvas.width, canvas.height);
-          
-          // Head: Yellow blocky head
-          drawCube(ctx, p.x, p.y, p.z + 11, 8, 8, 8, '#FFEB3B', '#FBC02D', '#F9A825', cam.x, cam.y, cam.z, canvas.width, canvas.height);
-
-          // Face detailing (eyes and mouth)
-          const face = project(p.x, p.y, p.z + 13, cam.x, cam.y, cam.z, canvas.width, canvas.height);
-          ctx.fillStyle = '#000000';
-          // Draw little square eyes
-          ctx.fillRect(face.x + 1, face.y, 1.5, 1.5);
-          ctx.fillRect(face.x + 4, face.y - 1.5, 1.5, 1.5);
-          // Draw small Roblox smile
+    case TOGGLE: {
+      if (toggleOn) {
+        // active orange toggle
+        ctx.fillStyle = '#2A1200';
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = C.toggle;
+        for (let i = 0; i < 3; i++) {
+          const sx = px + 5 + i * 12;
           ctx.beginPath();
-          ctx.arc(face.x + 2.5, face.y + 2, 2, 0, Math.PI);
-          ctx.stroke();
+          ctx.moveTo(sx, py + TILE - 2);
+          ctx.lineTo(sx + 6, py + 5);
+          ctx.lineTo(sx + 12, py + TILE - 2);
+          ctx.closePath();
+          ctx.fill();
         }
-      });
+        ctx.fillStyle = '#883300';
+        ctx.fillRect(px + 2, py + TILE - 6, TILE - 4, 4);
+      } else {
+        // retracted — safe, show dim grooves
+        floor();
+        ctx.fillStyle = 'rgba(255,153,0,0.22)';
+        for (let i = 0; i < 3; i++) {
+          ctx.fillRect(px + 5 + i * 12, py + TILE - 9, 10, 6);
+        }
+      }
+      break;
+    }
 
-      animFrameRef.current = requestAnimationFrame(loop);
+    case DOOR: {
+      floor();
+      if (doorOpen) {
+        // glowing portal
+        const g = ctx.createRadialGradient(
+          px + TILE / 2, py + TILE / 2, 2,
+          px + TILE / 2, py + TILE / 2, TILE / 2 + 4,
+        );
+        g.addColorStop(0, '#BBFFDD');
+        g.addColorStop(1, 'rgba(34,170,85,0.05)');
+        ctx.fillStyle = g;
+        ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+        ctx.fillStyle = '#44FF88';
+        ctx.font = '22px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⭐', px + TILE / 2, py + TILE / 2);
+      } else {
+        // locked door
+        ctx.fillStyle = C.doorCl;
+        ctx.fillRect(px + 6, py + 2, TILE - 12, TILE - 2);
+        ctx.fillStyle = '#FBBF24';
+        [8, 17, 26].forEach(ox => ctx.fillRect(px + ox, py + 4, 4, TILE - 10));
+        // lock circle
+        ctx.beginPath();
+        ctx.arc(px + TILE / 2, py + TILE / 2 + 2, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#FBBF24';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(px + TILE / 2, py + TILE / 2 + 2, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = C.doorCl;
+        ctx.fill();
+      }
+      break;
+    }
+  }
+}
+
+function drawPlayer(ctx: CanvasRenderingContext2D, x: number, y: number, facing: number) {
+  const cx = x * TILE + TILE / 2;
+  const cy = y * TILE + TILE / 2 + 2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  if (facing < 0) ctx.scale(-1, 1);
+
+  // drop shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(0, 13, 7, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // legs
+  ctx.fillStyle = C.pants;
+  ctx.fillRect(-6, 6, 5, 8);
+  ctx.fillRect(2, 6, 5, 8);
+  // shoes
+  ctx.fillStyle = '#111';
+  ctx.fillRect(-7, 12, 6, 3);
+  ctx.fillRect(1, 12, 6, 3);
+  // body / shirt
+  ctx.fillStyle = C.shirt;
+  ctx.fillRect(-7, -4, 14, 12);
+  // collar
+  ctx.fillStyle = '#3A7ECC';
+  ctx.fillRect(-7, -4, 14, 3);
+  // head
+  ctx.fillStyle = C.skin;
+  ctx.fillRect(-6, -16, 12, 13);
+  // hair
+  ctx.fillStyle = '#5C3D11';
+  ctx.fillRect(-6, -16, 12, 4);
+  // eyes
+  ctx.fillStyle = '#222';
+  ctx.fillRect(-4, -12, 3, 3);
+  ctx.fillRect(2, -12, 3, 3);
+  // eye shine
+  ctx.fillStyle = '#FFF';
+  ctx.fillRect(-3, -12, 1, 1);
+  ctx.fillRect(3, -12, 1, 1);
+  // smile
+  ctx.fillStyle = '#C07060';
+  ctx.fillRect(-2, -7, 4, 2);
+
+  ctx.restore();
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, r: number,
+  fill: string | CanvasGradient,
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x,     y + h, r);
+  ctx.arcTo(x,     y + h, x,     y,     r);
+  ctx.arcTo(x,     y,     x + w, y,     r);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Component
+// ──────────────────────────────────────────────────────────────────────────────
+export default function GameApp({ config, secretPassword }: GameAppProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const phaseRef  = useRef<Phase>('select');
+  const gsRef     = useRef<GS | null>(null);
+  const rafRef    = useRef(0);
+  const pulseRef  = useRef(0);
+
+  const [phase, setPhase] = useState<Phase>('select');
+  const [hud, setHud] = useState({ got: 0, total: 0, lvl: 1, name: '', diff: '' });
+
+  // Resolve the secret passcode from multiple possible sources
+  const pass: string =
+    secretPassword ??
+    (typeof config?.secretPassword === 'string' ? config.secretPassword : undefined) ??
+    (typeof config?.password        === 'string' ? config.password        : undefined) ??
+    '1234';
+
+  // ── Initialise / reset a level ───────────────────────────────────────────
+  const initLevel = useCallback((diff: Difficulty, lvlIdx: number): GS => {
+    const lvlData = MAPS[diff][lvlIdx];
+    const tiles   = parseRows(lvlData.rows);
+
+    let px = 1, py = 1, total = 0;
+    for (let y = 0; y < tiles.length; y++) {
+      for (let x = 0; x < (tiles[y]?.length ?? 0); x++) {
+        if (tiles[y][x] === START) { px = x; py = y; tiles[y][x] = FLOOR; }
+        if (tiles[y][x] === HEART) total++;
+      }
+    }
+
+    const gs: GS = {
+      diff, lvl: lvlIdx,
+      tiles, px, py, facing: 1,
+      got: 0, total, doorOpen: false,
+      moves: 0, flash: 0,
+    };
+    gsRef.current = gs;
+    setHud({
+      got: 0, total, lvl: lvlIdx + 1,
+      name: lvlData.name,
+      diff: diff.charAt(0).toUpperCase() + diff.slice(1),
+    });
+    return gs;
+  }, []);
+
+  const startGame = useCallback((diff: Difficulty) => {
+    initLevel(diff, 0);
+    phaseRef.current = 'playing';
+    setPhase('playing');
+  }, [initLevel]);
+
+  // ── Keyboard handler ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const handle = (e: KeyboardEvent) => {
+      const ph = phaseRef.current;
+      const gs = gsRef.current;
+
+      // Victory / select: ignore all game keys
+      if (ph === 'select' || ph === 'victory') return;
+
+      // During death flash — wait for auto-respawn
+      if (ph === 'dead') return;
+
+      // Level complete screen — only Enter/Space to advance
+      if (ph === 'level_complete') {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (!gs) return;
+          const next = gs.lvl + 1;
+          if (next < MAPS[gs.diff].length) {
+            initLevel(gs.diff, next);
+            phaseRef.current = 'playing';
+            setPhase('playing');
+          } else {
+            phaseRef.current = 'victory';
+            setPhase('victory');
+          }
+        }
+        return;
+      }
+
+      // Restart with R
+      if (e.key === 'r' || e.key === 'R') {
+        if (gs) {
+          initLevel(gs.diff, gs.lvl);
+          phaseRef.current = 'playing';
+          setPhase('playing');
+        }
+        return;
+      }
+
+      // Movement
+      let dx = 0, dy = 0;
+      switch (e.key) {
+        case 'ArrowLeft':  case 'a': case 'A': dx = -1; break;
+        case 'ArrowRight': case 'd': case 'D': dx =  1; break;
+        case 'ArrowUp':    case 'w': case 'W': dy = -1; break;
+        case 'ArrowDown':  case 's': case 'S': dy =  1; break;
+        default: return;
+      }
+      e.preventDefault();
+      if (!gs) return;
+
+      const nx = gs.px + dx;
+      const ny = gs.py + dy;
+      if (ny < 0 || ny >= ROWS || nx < 0 || nx >= COLS) return;
+
+      const target = gs.tiles[ny]?.[nx] ?? WALL;
+
+      // Blocked by solid wall
+      if (target === WALL || target === VOID) return;
+      // Blocked by closed door
+      if (target === DOOR && !gs.doorOpen) return;
+
+      // Check toggle state BEFORE the move (what the player sees)
+      const toggleOn = (gs.moves % 6) < 3;
+
+      // Commit move
+      if (dx !== 0) gs.facing = dx;
+      gs.px = nx;
+      gs.py = ny;
+      gs.moves++;
+
+      // ── Stepped on a hazard?
+      if (target === SPIKE || (target === TOGGLE && toggleOn)) {
+        gs.flash = 30;
+        phaseRef.current = 'dead';
+        setPhase('dead');
+        return;
+      }
+
+      // ── Collected a heart?
+      if (target === HEART) {
+        gs.tiles[ny][nx] = FLOOR;
+        gs.got++;
+        if (gs.got >= gs.total) gs.doorOpen = true;
+        setHud(h => ({ ...h, got: gs.got }));
+      }
+
+      // ── Entered open door → level complete
+      if (target === DOOR && gs.doorOpen) {
+        phaseRef.current = 'level_complete';
+        setPhase('level_complete');
+      }
     };
 
-    animFrameRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animFrameRef.current);
-  }, [gameState, activeCheckpoint, isOof, sounds]);
+    window.addEventListener('keydown', handle);
+    return () => window.removeEventListener('keydown', handle);
+  }, [initLevel]);
 
+  // ── Canvas render loop ───────────────────────────────────────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const draw = () => {
+      const ph = phaseRef.current;
+      const gs = gsRef.current;
+      pulseRef.current += 0.055;
+
+      // Background fill
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(0, 0, W, H);
+
+      if (ph !== 'select' && gs) {
+        const toggleOn = (gs.moves % 6) < 3;
+
+        // ── Draw all tiles
+        for (let y = 0; y < ROWS; y++) {
+          for (let x = 0; x < COLS; x++) {
+            drawTile(ctx, gs.tiles[y]?.[x] ?? WALL, x, y, toggleOn, pulseRef.current, gs.doorOpen);
+          }
+        }
+
+        // ── Draw player (blink during death flash)
+        if (ph !== 'dead' || gs.flash % 6 < 3) {
+          drawPlayer(ctx, gs.px, gs.py, gs.facing);
+        }
+
+        // ── Death flash countdown
+        if (ph === 'dead') {
+          const alpha = (gs.flash / 30) * 0.5;
+          ctx.fillStyle = `rgba(255,40,40,${alpha})`;
+          ctx.fillRect(0, 0, W, H);
+          gs.flash--;
+          if (gs.flash <= 0) {
+            initLevel(gs.diff, gs.lvl);
+            phaseRef.current = 'playing';
+            setPhase('playing');
+          }
+        }
+
+        // ── Level complete overlay
+        if (ph === 'level_complete') {
+          ctx.fillStyle = 'rgba(0,0,0,0.62)';
+          ctx.fillRect(0, 0, W, H);
+          roundRect(ctx, W / 2 - 192, H / 2 - 76, 384, 152, 20, '#FFFDE7');
+          ctx.fillStyle = '#1A1A2E';
+          ctx.font = 'bold 28px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('✨ Level Complete! ✨', W / 2, H / 2 - 28);
+          ctx.font = '15px system-ui, sans-serif';
+          ctx.fillStyle = '#555';
+          ctx.fillText(
+            gs.lvl + 1 < MAPS[gs.diff].length
+              ? 'Press  Enter  or  Space  to continue →'
+              : 'Press  Enter  or  Space  for the finale!',
+            W / 2, H / 2 + 14,
+          );
+          ctx.font = '12px system-ui, sans-serif';
+          ctx.fillStyle = '#888';
+          ctx.fillText('R to restart this level', W / 2, H / 2 + 42);
+        }
+
+        // ── Victory overlay
+        if (ph === 'victory') {
+          ctx.fillStyle = 'rgba(0,0,0,0.9)';
+          ctx.fillRect(0, 0, W, H);
+
+          const g = ctx.createLinearGradient(0, H / 2 - 148, 0, H / 2 + 148);
+          g.addColorStop(0, '#FF6B9D');
+          g.addColorStop(1, '#B5294A');
+          roundRect(ctx, W / 2 - 214, H / 2 - 146, 428, 292, 24, g);
+
+          ctx.fillStyle = '#FFF';
+          ctx.font = 'bold 34px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🎉  You Did It!  🎉', W / 2, H / 2 - 96);
+
+          ctx.font = '16px system-ui, sans-serif';
+          ctx.fillStyle = 'rgba(255,255,255,0.88)';
+          ctx.fillText('You found the secret key!', W / 2, H / 2 - 54);
+
+          // passcode card
+          roundRect(ctx, W / 2 - 116, H / 2 - 32, 232, 76, 14, 'rgba(255,255,255,0.16)');
+          ctx.fillStyle = '#FBBF24';
+          ctx.font = 'bold 52px monospace';
+          ctx.fillText(pass, W / 2, H / 2 + 6);
+
+          ctx.fillStyle = 'rgba(255,220,234,0.92)';
+          ctx.font = '15px system-ui, sans-serif';
+          ctx.fillText('Enter this in the 🔒 Secret Folder!', W / 2, H / 2 + 76);
+
+          ctx.fillStyle = 'rgba(255,255,255,0.38)';
+          ctx.font = '12px system-ui, sans-serif';
+          ctx.fillText('Close window  ·  Click the Secret icon  ·  Type the code', W / 2, H / 2 + 106);
+        }
+      }
+
+      rafRef.current = requestAnimationFrame(draw);
+    };
+
+    rafRef.current = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [pass, initLevel]);
+
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div
-      className="flex flex-col items-center h-full text-white"
-      style={{
-        background: 'linear-gradient(180deg, #1E1B4B 0%, #311042 100%)',
-        padding: 16,
-        fontFamily: 'var(--font-nunito)',
-        overflow: 'hidden',
-      }}
-    >
-      {/* HUD Details */}
-      {gameState === 'playing' && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: 8, fontSize: 12, fontWeight: 700 }}>
-          <div style={{ color: '#FFD700' }}>
-            🚩 Checkpoint: {activeCheckpoint !== -1 ? 'Saved!' : 'Start'}
-          </div>
-          <div style={{ color: '#CBD5E1' }}>
-            Roblox Obby Course
-          </div>
+    <div style={{
+      width: '100%', height: '100%',
+      display: 'flex', flexDirection: 'column',
+      background: C.bg, overflow: 'hidden',
+      userSelect: 'none',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+    }}>
+
+      {/* HUD bar */}
+      {phase !== 'select' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '5px 14px',
+          background: '#111827',
+          borderBottom: '2px solid #2D3561',
+          fontSize: 12, color: '#C7D5E8', flexShrink: 0,
+        }}>
+          <span style={{ fontWeight: 700 }}>
+            💕&nbsp;{hud.got}&nbsp;/&nbsp;{hud.total}
+          </span>
+          <span style={{ fontWeight: 800, letterSpacing: '0.2px' }}>
+            Level {hud.lvl}: {hud.name}
+          </span>
+          <span style={{ opacity: 0.45 }}>
+            {hud.diff} · R = restart
+          </span>
         </div>
       )}
 
-      {/* Confetti */}
-      <div className="fixed inset-0 pointer-events-none z-50">
-        {confetti.map((c) => (
-          <motion.div
-            key={c.id}
-            initial={{ top: `${c.y}%`, left: `${c.x}%`, opacity: 1, scale: 0.5 }}
-            animate={{ top: '-20%', opacity: 0, scale: 1.5, rotate: 360 }}
-            transition={{ duration: 2.2 + Math.random(), ease: 'easeOut' }}
-            style={{ position: 'absolute', fontSize: 24 }}
-          >
-            {c.emoji}
-          </motion.div>
-        ))}
-      </div>
+      {/* Canvas wrapper */}
+      <div style={{
+        flex: 1, position: 'relative',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <canvas
+          ref={canvasRef}
+          width={W}
+          height={H}
+          style={{ display: 'block', maxWidth: '100%', maxHeight: '100%', imageRendering: 'pixelated' }}
+        />
 
-      <AnimatePresence mode="wait">
-        {/* Idle screen */}
-        {gameState === 'idle' && (
-          <motion.div
-            key="idle"
-            className="flex flex-col items-center justify-center flex-1 gap-4 text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <motion.div
-              animate={{ rotate: [0, 8, -8, 8, 0], scale: [1, 1.05, 1] }}
-              transition={{ repeat: Infinity, duration: 3 }}
-              style={{ fontSize: 64, filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.3))' }}
-            >
-              🎮
-            </motion.div>
-            <div style={{ color: 'white', fontSize: 18, fontWeight: 800 }}>Roblox Studio Obby</div>
-            <div style={{ color: '#94A3B8', fontSize: 12, lineHeight: 1.6, maxWidth: 300 }}>
-              Help the classic yellow noob reach the golden trophy! Avoid falling, jump over the red lava blocks, and touch checkpoints to save progress.
-            </div>
-            
-            <div style={{
-              background: 'rgba(255,255,255,0.06)',
-              borderRadius: 8,
-              padding: '8px 16px',
-              fontSize: 11,
-              color: '#CBD5E1',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}>
-              ⌨️ <strong>Controls:</strong> WASD / Arrows to Move, <strong>Space</strong> to Jump
+        {/* ── Difficulty select screen ── */}
+        {phase === 'select' && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            background: 'linear-gradient(160deg, #0D1B2A 0%, #152232 50%, #0D2137 100%)',
+            gap: 22,
+          }}>
+            {/* Title */}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 60, lineHeight: 1, marginBottom: 10 }}>💕</div>
+              <h2 style={{
+                color: '#FFF', fontSize: 30, margin: 0,
+                fontWeight: 900, letterSpacing: '-0.5px',
+              }}>
+                Heart Maze
+              </h2>
+              <p style={{
+                color: '#6A8FAA', fontSize: 13, margin: '10px 0 0', lineHeight: 1.8,
+              }}>
+                Collect all hearts · Reach the door · Unlock the secret
+              </p>
             </div>
 
-            <motion.button
-              onClick={startGame}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              style={{
-                background: 'linear-gradient(135deg, #EF4444, #F59E0B)',
-                border: 'none',
-                borderRadius: 20,
-                padding: '10px 32px',
-                fontSize: 14,
-                fontWeight: 800,
-                cursor: 'pointer',
-                color: 'white',
-                boxShadow: '0 4px 14px rgba(239,68,68,0.4)',
-                fontFamily: 'var(--font-nunito)',
-              }}
-            >
-              ▶ Play Obby Game
-            </motion.button>
-          </motion.div>
-        )}
-
-        {/* Gameplay Canvas Screen */}
-        {gameState === 'playing' && (
-          <motion.div key="playing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ position: 'relative', flex: 1 }}>
-            <canvas
-              ref={canvasRef}
-              width={440}
-              height={320}
-              style={{
-                display: 'block',
-                borderRadius: 12,
-                border: '3.5px solid #431407',
-                boxShadow: 'inset 0 4px 10px rgba(0,0,0,0.6)',
-                backgroundColor: '#111827',
-              }}
-            />
-
-            {/* OOF screen overlay */}
-            <AnimatePresence>
-              {isOof && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
+            {/* Difficulty buttons */}
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {([ 
+                { d: 'easy'   as const, emoji: '😊', label: 'Easy',   bg: '#166534', hi: '#1A7A3F' },
+                { d: 'medium' as const, emoji: '😤', label: 'Medium', bg: '#92400E', hi: '#B45309' },
+                { d: 'hard'   as const, emoji: '💀', label: 'Hard',   bg: '#991B1B', hi: '#B91C1C' },
+              ]).map(({ d, emoji, label, bg, hi }) => (
+                <button
+                  key={d}
+                  onClick={() => startGame(d)}
                   style={{
-                    position: 'absolute',
-                    inset: 0,
-                    backgroundColor: 'rgba(239,68,68,0.25)',
-                    borderRadius: 12,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    pointerEvents: 'none',
+                    padding: '15px 32px',
+                    borderRadius: 14, border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 800, fontSize: 16,
+                    background: bg, color: '#FFF',
+                    boxShadow: '0 5px 0 rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.07)',
+                    transition: 'transform 0.08s, box-shadow 0.08s, background 0.12s',
+                    letterSpacing: '0.3px',
+                  }}
+                  onMouseEnter={e  => { e.currentTarget.style.background = hi; }}
+                  onMouseLeave={e  => {
+                    e.currentTarget.style.background  = bg;
+                    e.currentTarget.style.transform   = '';
+                    e.currentTarget.style.boxShadow   = '0 5px 0 rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.07)';
+                  }}
+                  onMouseDown={e   => {
+                    e.currentTarget.style.transform = 'translateY(3px)';
+                    e.currentTarget.style.boxShadow = '0 2px 0 rgba(0,0,0,0.45)';
+                  }}
+                  onMouseUp={e     => {
+                    e.currentTarget.style.transform = '';
+                    e.currentTarget.style.boxShadow = '0 5px 0 rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.07)';
                   }}
                 >
-                  <span style={{ fontSize: 44, fontWeight: 900, color: '#EF4444', textShadow: '2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000', fontFamily: 'var(--font-pixel)', letterSpacing: 2 }}>
-                    OOF!
-                  </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-
-        {/* Victory Screen displaying key */}
-        {gameState === 'won' && (
-          <motion.div
-            key="won"
-            className="flex flex-col items-center justify-center flex-1 gap-4 text-center"
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: 'spring', stiffness: 200 }}
-          >
-            <motion.div
-              animate={{ rotate: [0, 15, -15, 15, 0], scale: [1, 1.2, 1] }}
-              transition={{ repeat: 2, duration: 0.6 }}
-              style={{ fontSize: 64, filter: 'drop-shadow(0 4px 10px rgba(255,215,0,0.4))' }}
-            >
-              🏆
-            </motion.div>
-            <div style={{ color: '#FBBF24', fontSize: 22, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Obby Completed!
-            </div>
-            
-            <div style={{ color: '#E2E8F0', fontSize: 13, lineHeight: 1.6, maxWidth: 280, fontFamily: 'var(--font-hand)' }}>
-              {config.rewardMessage || 'You made it across the stud layout! Excellent block jump calculations.'}
+                  {emoji}&nbsp;&nbsp;{label}
+                </button>
+              ))}
             </div>
 
-            {/* Secret key reward presentation card */}
+            {/* Controls reminder */}
             <div style={{
-              background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
-              border: '2px solid #60A5FA',
-              borderRadius: 12,
-              padding: '12px 20px',
-              boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-              marginTop: 6,
-              minWidth: 220,
+              color: '#2E4A5F', fontSize: 12, textAlign: 'center', lineHeight: 2,
             }}>
-              <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: '#93C5FD', letterSpacing: 1 }}>
-                Unlocks Secret Folder
-              </span>
-              <span style={{ fontSize: 24, fontWeight: 900, fontFamily: 'var(--font-pixel)', color: '#FFFFFF', letterSpacing: 2 }}>
-                {secretPassword}
-              </span>
-              <span style={{ fontSize: 9, color: '#93C5FD' }}>
-                🔑 Enter this passcode into the Locked Folder!
-              </span>
+              <div>← → ↑ ↓ &nbsp;&nbsp;or&nbsp;&nbsp; W A S D &nbsp;&nbsp;to move</div>
+              <div>R to restart &nbsp;·&nbsp; Enter / Space to advance</div>
+              <div style={{ marginTop: 4, color: '#243340', fontSize: 11 }}>
+                Hard: 🟠 orange spikes toggle — time your moves!
+              </div>
             </div>
-
-            <motion.button
-              onClick={startGame}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255,255,255,0.3)',
-                borderRadius: 20,
-                padding: '8px 24px',
-                fontSize: 11,
-                color: 'white',
-                cursor: 'pointer',
-                fontWeight: 700,
-                marginTop: 6,
-                fontFamily: 'var(--font-nunito)',
-              }}
-            >
-              Play again
-            </motion.button>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+
+        {/* ── Death message ── */}
+        {phase === 'dead' && (
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: '#DC2626', color: '#FFF',
+            padding: '8px 24px', borderRadius: 10,
+            fontSize: 14, fontWeight: 800,
+            pointerEvents: 'none',
+            boxShadow: '0 4px 20px rgba(220,38,38,0.6)',
+            letterSpacing: '0.3px',
+          }}>
+            💀&nbsp;Ouch! Respawning…
+          </div>
+        )}
+      </div>
     </div>
   );
 }

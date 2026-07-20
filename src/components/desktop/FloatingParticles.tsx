@@ -1,28 +1,31 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 
-interface Particle {
-  id: number;
-  x: number;
-  delay: number;
-  duration: number;
-  emoji: string;
-  size: number;
+// Seeded pseudo-random — same value on server & client, no hydration mismatch
+function seededRand(seed: number): number {
+  const x = Math.sin(seed + 1) * 10000;
+  return x - Math.floor(x);
 }
 
-export default function FloatingParticles() {
-  const EMOJIS = ['💗', '✨', '🌸', '⭐', '💫', '🌟', '💝', '🦋'];
-  const PARTICLE_COUNT = 12;
+const EMOJIS = ['💗', '✨', '🌸', '⭐', '💫', '🌟', '💝', '🦋'];
+const PARTICLE_COUNT = 12;
 
-  const particles: Particle[] = Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
-    id: i,
-    x: (i / PARTICLE_COUNT) * 100 + Math.random() * 8,
-    delay: Math.random() * 8,
-    duration: 8 + Math.random() * 10,
-    emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
-    size: 12 + Math.random() * 10,
-  }));
+export default function FloatingParticles() {
+  const particles = useMemo(() =>
+    Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+      id: i,
+      x:        (i / PARTICLE_COUNT) * 100 + seededRand(i * 3) * 8,
+      delay:    seededRand(i * 7) * 8,
+      duration: 8 + seededRand(i * 11) * 10,
+      emoji:    EMOJIS[Math.floor(seededRand(i * 13) * EMOJIS.length)],
+      size:     12 + seededRand(i * 17) * 10,
+      rotDir:   seededRand(i * 5) > 0.5 ? 180 : -180,
+      driftA:   (seededRand(i * 19) - 0.5) * 40,
+      driftB:   (seededRand(i * 23) - 0.5) * 80,
+      repeatDel: seededRand(i * 29) * 4,
+    }))
+  , []);
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 1 }}>
@@ -38,16 +41,16 @@ export default function FloatingParticles() {
             userSelect: 'none',
           }}
           animate={{
-            y: [0, -(typeof window !== 'undefined' ? window.innerHeight : 600) - 80],
+            y: [0, -700],
             opacity: [0, 0.7, 0.7, 0],
-            rotate: [0, Math.random() > 0.5 ? 180 : -180],
-            x: [(Math.random() - 0.5) * 40, (Math.random() - 0.5) * 80],
+            rotate: [0, p.rotDir],
+            x: [p.driftA, p.driftB],
           }}
           transition={{
             duration: p.duration,
             delay: p.delay,
             repeat: Infinity,
-            repeatDelay: Math.random() * 4,
+            repeatDelay: p.repeatDel,
             ease: 'easeOut',
           }}
         >

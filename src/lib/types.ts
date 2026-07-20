@@ -1,4 +1,4 @@
-export type AppType = 'mail' | 'gacha' | 'mixtape' | 'ticket' | 'game' | 'photos' | 'calendar' | 'secret';
+export type AppType = 'mail' | 'gacha' | 'mixtape' | 'ticket' | 'game' | 'photos' | 'calendar' | 'secret' | 'purr';
 
 export interface DesktopConfig {
   id: string;
@@ -11,6 +11,15 @@ export interface DesktopConfig {
   welcomeMessage: string;
   apps: {
     [key in AppType]?: AppConfig;
+  };
+  music?: {
+    enabled: boolean;
+    url?: string;
+    fileName?: string;
+    startOffset?: number;
+    endOffset?: number;
+    loop?: boolean;
+    volume?: number;
   };
 }
 

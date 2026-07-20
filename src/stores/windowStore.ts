@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type AppType = 'mail' | 'gacha' | 'mixtape' | 'ticket' | 'game' | 'photos' | 'calendar' | 'secret';
+export type AppType = 'mail' | 'gacha' | 'mixtape' | 'ticket' | 'game' | 'photos' | 'calendar' | 'secret' | 'purr';
 
 export interface WindowState {
   id: string;
@@ -52,6 +52,7 @@ const DEFAULT_SIZES: Record<AppType, { width: number; height: number }> = {
   photos: { width: 600, height: 480 },
   calendar: { width: 420, height: 460 },
   secret: { width: 380, height: 380 },
+  purr: { width: 500, height: 500 },
 };
 
 export const useWindowStore = create<WindowStore>((set, get) => ({

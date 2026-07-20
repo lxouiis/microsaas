@@ -11,8 +11,8 @@ import ShutdownSequence from './ShutdownSequence';
 import FloatingParticles from './FloatingParticles';
 import Window from './Window';
 import DesktopPet from './DesktopPet';
+import DesktopMusicPlayer from './DesktopMusicPlayer';
 
-// App components
 import MailApp from '../apps/MailApp';
 import GachaApp from '../apps/GachaApp';
 import MixtapeApp from '../apps/MixtapeApp';
@@ -22,6 +22,9 @@ import PhotosApp from '../apps/PhotosApp';
 import CalendarApp from '../apps/CalendarApp';
 import SecretApp from '../apps/SecretApp';
 import type { AppType } from '@/stores/windowStore';
+
+import dynamic from 'next/dynamic';
+const KittenCanvas = dynamic(() => import('../apps/KittenCanvas'), { ssr: false });
 
 interface DesktopProps {
   config: DesktopConfig;
@@ -38,6 +41,7 @@ function renderApp(appType: AppType, config: any, fullConfig?: DesktopConfig) {
     case 'photos': return <PhotosApp config={config} />;
     case 'calendar': return <CalendarApp config={config} />;
     case 'secret': return <SecretApp config={config} />;
+    case 'purr': return <KittenCanvas config={config} />;
     default: return null;
   }
 }
@@ -52,7 +56,7 @@ export default function Desktop({ config }: DesktopProps) {
     setTimeout(() => window.location.reload(), 500);
   }, []);
 
-  const APP_ORDER: AppType[] = ['mail', 'gacha', 'mixtape', 'ticket', 'game', 'photos', 'calendar', 'secret'];
+  const APP_ORDER: AppType[] = ['mail', 'gacha', 'mixtape', 'ticket', 'game', 'photos', 'calendar', 'secret', 'purr'];
 
   const enabledApps = APP_ORDER.filter(
     (appType) => config.apps[appType]?.enabled !== false
@@ -100,7 +104,7 @@ export default function Desktop({ config }: DesktopProps) {
           {/* Column 1: Mail, Gacha, Mixtape, Ticket, Game, Photos, Recycle Bin */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {enabledApps
-              .filter((appType) => appType !== 'calendar' && appType !== 'secret')
+              .filter((appType) => appType !== 'calendar' && appType !== 'secret' && appType !== 'purr')
               .map((appType) => (
                 <DesktopIcon key={appType} appType={appType} />
               ))}
@@ -120,10 +124,10 @@ export default function Desktop({ config }: DesktopProps) {
             </motion.div>
           </div>
 
-          {/* Column 2: Calendar, Secret */}
+          {/* Column 2: Calendar, Secret, Cat Purr */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {enabledApps
-              .filter((appType) => appType === 'calendar' || appType === 'secret')
+              .filter((appType) => appType === 'calendar' || appType === 'secret' || appType === 'purr')
               .map((appType) => (
                 <DesktopIcon key={appType} appType={appType} />
               ))}
@@ -282,6 +286,7 @@ export default function Desktop({ config }: DesktopProps) {
       </AnimatePresence>
 
       <DesktopPet />
+      <DesktopMusicPlayer config={config.music} />
     </div>
   );
 }

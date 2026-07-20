@@ -9,6 +9,15 @@ export const DEMO_DESKTOP: DesktopConfig = {
   stickyNote: 'P.S. I made this little computer just for you. Explore everything! 🌸',
   shutdownMessage: 'Thank you for visiting my little world ❤️',
   welcomeMessage: 'Someone made this little desktop just for you 💌',
+  music: {
+    enabled: true,
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    fileName: 'Default Dreamy Synth.mp3',
+    startOffset: 0,
+    endOffset: 60,
+    loop: true,
+    volume: 0.5,
+  },
   apps: {
     mail: {
       enabled: true,
@@ -133,7 +142,7 @@ Play this on a lazy afternoon and know that somewhere, someone is thinking of yo
     secret: {
       enabled: true,
       config: {
-        passwordHint: 'Complete the Roblox Obby game to find it! 🔑',
+        passwordHint: 'Complete the Heart Maze game to find it! 🔑',
         password: '8042',
         contentType: 'message',
         title: 'A Hidden Message For You 💌',
@@ -153,6 +162,12 @@ With so much love,
 Your Secret Admirer ✨`,
       },
     },
+    purr: {
+      enabled: true,
+      config: {
+        catName: 'Lemon',
+      },
+    },
   },
 };
 
@@ -165,6 +180,7 @@ export const APP_ICONS: Record<string, string> = {
   photos: '📸',
   calendar: '📅',
   secret: '🔒',
+  purr: '🐱',
 };
 
 export const APP_TITLES: Record<string, string> = {
@@ -176,4 +192,5 @@ export const APP_TITLES: Record<string, string> = {
   photos: 'My Photos',
   calendar: 'Calendar',
   secret: 'Secret',
+  purr: 'Cat Purr',
 };

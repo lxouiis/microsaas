@@ -272,15 +272,17 @@ export default function DesktopPet({ desktopAreaId = 'desktop-area' }: DesktopPe
       >
         <span style={{ pointerEvents: 'auto' }}>
           {/* Animated SVG black kitten */}
-          <svg width="60" height="60" viewBox="0 0 60 60" style={{ display: 'block' }}>
+          <svg width="120" height="120" viewBox="0 0 60 60" style={{ display: 'block' }}>
             <style>
               {`
-                .cat-body { fill: #121214; }
+                .cat-body { fill: #8A939E; }
+                .cat-belly { fill: #F3F4F6; }
+                .cat-stripe { stroke: #374151; fill: none; }
                 .cat-pink { fill: #FFAAAA; }
-                .cat-collar { fill: #EF4444; }
+                .cat-collar { fill: #D4506A; }
                 .cat-bell { fill: #FBBF24; }
-                .cat-eye { fill: #4E9BFF; }
-                .cat-pupil { fill: #000000; }
+                .cat-eye { fill: #A3D258; }
+                .cat-pupil { fill: #1A0800; }
                 .cat-highlight { fill: #FFFFFF; }
                 
                 /* Animations */
@@ -332,23 +334,30 @@ export default function DesktopPet({ desktopAreaId = 'desktop-area' }: DesktopPe
             {petState === 'sleeping' && (
               <g transform="translate(0, 8)">
                 {/* Curved sleeping tail */}
-                <path d="M 40 38 C 44 38, 48 34, 46 28 C 44 24, 38 26, 38 28" fill="none" stroke="#121214" strokeWidth="5" strokeLinecap="round" />
+                <path d="M 40 38 C 44 38, 48 34, 46 28 C 44 24, 38 26, 38 28" fill="none" stroke="#8A939E" strokeWidth="5" strokeLinecap="round" />
                 {/* Curled body */}
                 <ellipse cx="26" cy="34" rx="16" ry="12" className="cat-body" />
+                {/* Cream chest/belly */}
+                <path d="M 12 34 Q 16 46 26 44 L 20 34 Z" className="cat-belly" />
+                {/* Body stripes */}
+                <path d="M 22 24 L 23 29 M 28 24 L 29 29 M 34 26 L 35 31" className="cat-stripe" strokeWidth="2" strokeLinecap="round" />
                 {/* Sleeping head */}
                 <circle cx="18" cy="26" r="10" className="cat-body" />
+                {/* Forehead/Cheek stripes */}
+                <path d="M 18 16 L 18 19" className="cat-stripe" strokeWidth="1.5" />
+                <path d="M 12 20 Q 15 22 13 24 M 24 20 Q 21 22 23 24" className="cat-stripe" strokeWidth="1.2" strokeLinecap="round" />
                 {/* Pink Inner Ears */}
                 <polygon points="10,20 6,12 16,16" className="cat-body" />
                 <polygon points="9,18 7,13 14,15" className="cat-pink" />
                 <polygon points="20,18 24,10 26,18" className="cat-body" />
                 <polygon points="21,17 23,12 25,17" className="cat-pink" />
                 {/* Sleeping closed eye curves */}
-                <path d="M 12 26 Q 14 28 16 26" fill="none" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" />
-                <path d="M 20 26 Q 22 28 24 26" fill="none" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" />
+                <path d="M 12 26 Q 14 28 16 26" fill="none" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" />
+                <path d="M 20 26 Q 22 28 24 26" fill="none" stroke="#374151" strokeWidth="1.2" strokeLinecap="round" />
                 {/* Pink Nose */}
                 <polygon points="17,29 19,29 18,30.5" className="cat-pink" />
                 {/* Collar & Bell */}
-                <path d="M 22 32 Q 24 35 21 37" fill="none" stroke="#EF4444" strokeWidth="2.5" />
+                <path d="M 22 32 Q 24 35 21 37" fill="none" stroke="#D4506A" strokeWidth="2.5" />
                 <circle cx="20" cy="37" r="2.5" className="cat-bell" />
               </g>
             )}
@@ -357,11 +366,16 @@ export default function DesktopPet({ desktopAreaId = 'desktop-area' }: DesktopPe
             {petState === 'preening' && (
               <g>
                 {/* Tail waving */}
-                <path d="M 38 46 Q 48 40 46 24" fill="none" stroke="#121214" strokeWidth="5.5" strokeLinecap="round" className="tail" />
+                <path d="M 38 46 Q 48 40 46 24" fill="none" stroke="#8A939E" strokeWidth="5.5" strokeLinecap="round" className="tail" />
+                <path d="M 39 42 Q 44 38 45 30 M 41 34 L 43 32" className="cat-stripe tail" strokeWidth="1.8" />
                 {/* Standing/Sitting back legs */}
                 <ellipse cx="32" cy="44" rx="8" ry="6" className="cat-body" />
                 {/* Main sitting body */}
                 <path d="M 16 30 Q 14 46 22 48 L 34 46 Q 36 36 28 30 Z" className="cat-body" />
+                {/* Cream chest */}
+                <path d="M 16 30 Q 18 42 22 44 Q 24 36 20 30 Z" className="cat-belly" />
+                {/* Body stripes */}
+                <path d="M 26 32 Q 22 38 20 44 M 32 34 Q 28 40 26 46" className="cat-stripe" strokeWidth="2" strokeLinecap="round" />
                 
                 {/* Licking/Preening front paw */}
                 <g className="lick-paw">
@@ -372,16 +386,19 @@ export default function DesktopPet({ desktopAreaId = 'desktop-area' }: DesktopPe
                 {/* Head tilted forward */}
                 <g transform="rotate(10, 22, 26)">
                   <circle cx="20" cy="24" r="10" className="cat-body" />
+                  {/* Stripes */}
+                  <path d="M 20 14 L 20 17 M 16 15 L 18 18 M 24 15 L 22 18" className="cat-stripe" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M 27 22 Q 24 23 25 25" className="cat-stripe" strokeWidth="1.2" strokeLinecap="round" />
                   {/* Pink Inner Ears */}
                   <polygon points="12,18 8,8 18,13" className="cat-body" />
                   <polygon points="11,16 9,10 16,13" className="cat-pink" />
                   <polygon points="22,15 26,6 30,14" className="cat-body" />
                   <polygon points="23,13 25,8 28,13" className="cat-pink" />
                   {/* Licking closed eye */}
-                  <path d="M 13 24 Q 15 26 17 24" fill="none" stroke="#FFFFFF" strokeWidth="1.2" />
-                  <path d="M 21 23 Q 23 25 25 23" fill="none" stroke="#FFFFFF" strokeWidth="1.2" />
+                  <path d="M 13 24 Q 15 26 17 24" fill="none" stroke="#374151" strokeWidth="1.2" />
+                  <path d="M 21 23 Q 23 25 25 23" fill="none" stroke="#374151" strokeWidth="1.2" />
                   {/* Pink tongue */}
-                  <path d="M 16 28 Q 18 31 20 28 Z" fill="#FF8888" />
+                  <path d="M 16 28 Q 18 31 20 28 Z" fill="#FFAAAA" />
                   <polygon points="17,26 19,26 18,27.5" className="cat-pink" />
                 </g>
               </g>
@@ -391,7 +408,8 @@ export default function DesktopPet({ desktopAreaId = 'desktop-area' }: DesktopPe
             {(petState === 'wandering' || petState === 'navigating_icon' || petState === 'chasing_food') && (
               <g className="head-bob-class">
                 {/* Wagging tail */}
-                <path d="M 38 42 Q 52 38 46 16" fill="none" stroke="#121214" strokeWidth="5" strokeLinecap="round" className="tail" />
+                <path d="M 38 42 Q 52 38 46 16" fill="none" stroke="#8A939E" strokeWidth="5" strokeLinecap="round" className="tail" />
+                <path d="M 40 38 Q 48 35 45 22 M 42 30 L 44 28" className="cat-stripe tail" strokeWidth="1.8" />
                 {/* Moving Legs (Swing animations) */}
                 <g className="leg-front">
                   <rect x="16" y="42" width="5" height="14" rx="2.5" className="cat-body" />
@@ -408,27 +426,34 @@ export default function DesktopPet({ desktopAreaId = 'desktop-area' }: DesktopPe
                 
                 {/* Horizontal side body */}
                 <path d="M 14 32 Q 10 40 18 42 L 36 42 Q 38 34 32 30 Z" className="cat-body" />
+                {/* Cream chest/belly */}
+                <path d="M 14 32 Q 12 38 18 40 Q 20 36 18 32 Z" className="cat-belly" />
+                {/* Body stripes */}
+                <path d="M 22 32 L 20 40 M 27 32 L 25 40 M 32 32 L 30 40" className="cat-stripe" strokeWidth="2" strokeLinecap="round" />
                 
                 {/* Head facing front/side */}
                 <circle cx="16" cy="24" r="9.5" className="cat-body" />
+                {/* Stripes */}
+                <path d="M 16 14.5 L 16 17.5 M 13 15 L 14 18 M 19 15 L 18 18" className="cat-stripe" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M 23.5 22 Q 20 23 22 25" className="cat-stripe" strokeWidth="1.2" strokeLinecap="round" />
                 {/* Ears */}
                 <polygon points="8,19 4,10 13,15" className="cat-body" />
                 <polygon points="7,17 5,11 11,14" className="cat-pink" />
                 <polygon points="17,16 21,7 24,15" className="cat-body" />
                 <polygon points="18,14 20,9 22,14" className="cat-pink" />
-                {/* Blue Eyes */}
+                {/* Amber Eyes */}
                 <circle cx="11.5" cy="22.5" r="3" className="cat-eye" />
-                <circle cx="11.5" cy="22.5" r="1.5" className="cat-pupil" />
-                <circle cx="11" cy="21.5" r="0.8" className="cat-highlight" />
+                <rect x="11" y="20.5" width="1" height="4" rx="0.5" className="cat-pupil" />
+                <circle cx="10.8" cy="21.5" r="0.8" className="cat-highlight" />
 
                 <circle cx="18.5" cy="22.5" r="3" className="cat-eye" />
-                <circle cx="18.5" cy="22.5" r="1.5" className="cat-pupil" />
-                <circle cx="18" cy="21.5" r="0.8" className="cat-highlight" />
+                <rect x="18" y="20.5" width="1" height="4" rx="0.5" className="cat-pupil" />
+                <circle cx="17.8" cy="21.5" r="0.8" className="cat-highlight" />
                 
                 {/* Pink Nose */}
                 <polygon points="14,25.5 16,25.5 15,27" className="cat-pink" />
                 {/* Collar with gold bell */}
-                <path d="M 12 30 Q 15 33 19 30" fill="none" stroke="#EF4444" strokeWidth="2.5" />
+                <path d="M 12 30 Q 15 33 19 30" fill="none" stroke="#D4506A" strokeWidth="2.5" />
                 <circle cx="15.5" cy="33.5" r="2.5" className="cat-bell" />
               </g>
             )}
@@ -437,34 +462,42 @@ export default function DesktopPet({ desktopAreaId = 'desktop-area' }: DesktopPe
             {petState === 'idle' && (
               <g>
                 {/* Tail swishing */}
-                <path d="M 36 44 Q 48 38 44 20" fill="none" stroke="#121214" strokeWidth="5.5" strokeLinecap="round" className="tail" />
+                <path d="M 36 44 Q 48 38 44 20" fill="none" stroke="#8A939E" strokeWidth="5.5" strokeLinecap="round" className="tail" />
+                <path d="M 38 40 Q 43 36 42 28 M 39 32 L 41 30" className="cat-stripe tail" strokeWidth="1.8" />
                 
                 {/* Standing front legs */}
-                <rect x="18" y="40" width="5.5" height="15" rx="2.5" className="cat-body" />
-                <rect x="25.5" y="40" width="5.5" height="15" rx="2.5" className="cat-body" />
+                <rect x="18" y="40" width="5.5" height="15" rx="2.5" className="cat-belly" />
+                <rect x="25.5" y="40" width="5.5" height="15" rx="2.5" className="cat-belly" />
                 {/* Sitting back legs */}
                 <ellipse cx="33" cy="46" rx="8" ry="6" className="cat-body" />
 
                 {/* Main sitting body */}
                 <path d="M 16 28 Q 14 44 22 48 L 36 46 Q 38 34 28 28 Z" className="cat-body" />
+                {/* Cream chest */}
+                <path d="M 16 28 Q 18 40 22 42 Q 24 34 20 28 Z" className="cat-belly" />
+                {/* Body stripes */}
+                <path d="M 26 30 Q 22 36 20 42 M 32 32 Q 28 38 26 44" className="cat-stripe" strokeWidth="2" strokeLinecap="round" />
 
                 {/* Head sitting politely */}
                 <g>
                   <circle cx="22" cy="22" r="10" className="cat-body" />
+                  {/* Stripes */}
+                  <path d="M 22 12 L 22 15 M 18 13 L 20 16.5 M 26 13 L 24 16.5" className="cat-stripe" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M 29.5 20 Q 26 21 28 23" className="cat-stripe" strokeWidth="1.2" strokeLinecap="round" />
                   {/* Pink Inner Ears */}
                   <polygon points="14,16 9,6 19,11" className="cat-body" />
                   <polygon points="13,14 10,8 17,11" className="cat-pink" />
                   <polygon points="25,13 29,4 32,13" className="cat-body" />
                   <polygon points="26,11 28,6 30,11" className="cat-pink" />
                   
-                  {/* Large Blue Eyes (Blinks periodically via CSS) */}
+                  {/* Large Amber Eyes */}
                   <g style={{ transformOrigin: '22px 22px' }}>
                     <circle cx="17.5" cy="20.5" r="3.2" className="cat-eye" />
-                    <circle cx="17.5" cy="20.5" r="1.5" className="cat-pupil" />
+                    <rect x="17" y="18.5" width="1" height="4" rx="0.5" className="cat-pupil" />
                     <circle cx="16.5" cy="19.5" r="0.8" className="cat-highlight" />
 
                     <circle cx="26.5" cy="20.5" r="3.2" className="cat-eye" />
-                    <circle cx="26.5" cy="20.5" r="1.5" className="cat-pupil" />
+                    <rect x="26" y="18.5" width="1" height="4" rx="0.5" className="cat-pupil" />
                     <circle cx="25.5" cy="19.5" r="0.8" className="cat-highlight" />
                   </g>
                   
@@ -472,7 +505,7 @@ export default function DesktopPet({ desktopAreaId = 'desktop-area' }: DesktopPe
                   <polygon points="21,23.5 23,23.5 22,25" className="cat-pink" />
                   
                   {/* Collar with gold bell */}
-                  <path d="M 16 28 Q 22 32 27 28" fill="none" stroke="#EF4444" strokeWidth="2.5" />
+                  <path d="M 16 28 Q 22 32 27 28" fill="none" stroke="#D4506A" strokeWidth="2.5" />
                   <circle cx="21.5" cy="31" r="2.5" className="cat-bell" />
                 </g>
               </g>

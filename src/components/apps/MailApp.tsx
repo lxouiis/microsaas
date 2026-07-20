@@ -12,6 +12,7 @@ export default function MailApp({ config }: MailAppProps) {
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [typingDone, setTypingDone] = useState(false);
+  const [dateStr, setDateStr] = useState('');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startTypewriter = () => {
@@ -32,6 +33,7 @@ export default function MailApp({ config }: MailAppProps) {
   };
 
   useEffect(() => {
+    setDateStr(new Date().toLocaleString());
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -107,7 +109,7 @@ export default function MailApp({ config }: MailAppProps) {
                   <span style={{ fontWeight: 600 }}>To:</span>
                   <span>You 💌</span>
                   <span style={{ fontWeight: 600 }}>Date:</span>
-                  <span>{new Date().toLocaleString()}</span>
+                  <span>{dateStr}</span>
                 </div>
               </div>
 

@@ -1,11 +1,11 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import type { DesktopConfig } from '@/lib/types';
 import { DEMO_DESKTOP } from '@/lib/demoData';
 
-type TabType = 'basic' | 'mail' | 'gacha' | 'mixtape' | 'ticket' | 'photos' | 'calendar' | 'secret' | 'game' | 'appearance';
+type TabType = 'basic' | 'mail' | 'gacha' | 'mixtape' | 'ticket' | 'photos' | 'calendar' | 'secret' | 'game' | 'appearance' | 'purr' | 'music';
 
 import { saveDesktop } from '@/app/actions';
 import Desktop from '@/components/desktop/Desktop';
@@ -62,7 +62,14 @@ export default function CreatePage() {
     setPublishing(false);
   };
 
-  const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/d/${slug}`;
+  const [origin, setOrigin] = useState('');
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
+  const shareUrl = `${origin}/d/${slug}`;
 
   const TABS: { id: TabType; label: string; icon: string }[] = [
     { id: 'basic', label: 'Basic Info', icon: '⚙️' },
@@ -75,6 +82,8 @@ export default function CreatePage() {
     { id: 'calendar', label: 'Calendar', icon: '📅' },
     { id: 'secret', label: 'Secret', icon: '🔒' },
     { id: 'game', label: 'Game', icon: '⭐' },
+    { id: 'purr', label: 'Cat Purr', icon: '🐱' },
+    { id: 'music', label: 'Music 🎵', icon: '🎵' },
   ];
 
   const mailConfig = config.apps.mail?.config || {};
@@ -84,6 +93,8 @@ export default function CreatePage() {
   const calendarConfig = config.apps.calendar?.config || {};
   const secretConfig = config.apps.secret?.config || {};
   const gameConfig = config.apps.game?.config || {};
+  const purrConfig = config.apps.purr?.config || {};
+  const musicConfig = config.music || { enabled: false };
 
   return (
     <div
@@ -371,14 +382,182 @@ export default function CreatePage() {
 
             {activeTab === 'game' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🎮 Roblox Studio Obby</h3>
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🎮 Heart Maze Game</h3>
                 <div style={{ background: '#F0F8FF', borderRadius: 8, padding: 12, fontSize: 12, color: '#555', lineHeight: 1.6 }}>
-                  🎮 The recipient plays a 3D isometric Roblox platformer course. When they reach the finish line, they will be rewarded with the 4-digit Secret Folder password code you configured!
+                  🎮 The recipient plays a retro 2D grid-based Heart Maze puzzle game. When they complete all levels, they will be rewarded with the 4-digit Secret Folder password code you configured!
                 </div>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Victory Message</span>
-                  <textarea className="xp-input" value={gameConfig.rewardMessage || ''} onChange={(e) => updateAppConfig('game', { rewardMessage: e.target.value })} rows={4} placeholder="You completed the obby! Excellent block jump calculations..." style={{ borderRadius: 6, resize: 'vertical' }} />
+                  <textarea className="xp-input" value={gameConfig.rewardMessage || ''} onChange={(e) => updateAppConfig('game', { rewardMessage: e.target.value })} rows={4} placeholder="You completed the maze! Excellent calculations..." style={{ borderRadius: 6, resize: 'vertical' }} />
                 </label>
+              </div>
+            )}
+
+            {activeTab === 'purr' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🐱 Cat Purr</h3>
+                <div style={{ background: '#F0F8FF', borderRadius: 8, padding: 12, fontSize: 12, color: '#555', lineHeight: 1.6 }}>
+                  🐱 Set a custom name for your recipient's virtual 3D pet kitten! The recipient can play the interactive 3D Kitten Island simulation inside the Cat Purr window.
+                </div>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Kitten Name</span>
+                  <input className="xp-input" value={purrConfig.catName || ''} onChange={(e) => updateAppConfig('purr', { catName: e.target.value })} placeholder="e.g. Lemon" style={{ borderRadius: 6 }} />
+                </label>
+              </div>
+            )}
+
+            {activeTab === 'music' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🎵 Home Screen Background Music</h3>
+                <div style={{ background: '#F5F3FF', borderRadius: 8, padding: 12, fontSize: 12, color: '#5B21B6', lineHeight: 1.6 }}>
+                  🎵 Upload your own MP4 video or MP3 audio file. Trim it to play your favorite snippet on loop when the recipient opens the desktop.
+                </div>
+
+                {/* Enable toggle */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!musicConfig.enabled}
+                    onChange={(e) => {
+                      setConfig(prev => ({
+                        ...prev,
+                        music: {
+                          ...(prev.music || { startOffset: 0, endOffset: 60, loop: true, volume: 0.5 }),
+                          enabled: e.target.checked
+                        }
+                      }));
+                    }}
+                    style={{ width: 18, height: 18, cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#333' }}>Enable Background Music</span>
+                </label>
+
+                {musicConfig.enabled && (
+                  <>
+                    {/* Audio source choice */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid #EEE', paddingTop: 12 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>Select Preset Track</span>
+                      <select
+                        className="xp-input"
+                        style={{ borderRadius: 6 }}
+                        value={musicConfig.url || ''}
+                        onChange={(e) => {
+                          const url = e.target.value;
+                          const name = e.target.options[e.target.selectedIndex].text;
+                          if (url) {
+                            setConfig(prev => ({
+                              ...prev,
+                              music: {
+                                ...(prev.music || { loop: true, volume: 0.5 }),
+                                enabled: true,
+                                url,
+                                fileName: name,
+                                startOffset: 0,
+                                endOffset: 60,
+                              }
+                            }));
+                          }
+                        }}
+                      >
+                        <option value="">-- Choose a Preset track --</option>
+                        <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">Nostalgia Breeze (Chiptune)</option>
+                        <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3">Retro Sunset Beat (Lofi)</option>
+                        <option value="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3">Dreamy Space Synth</option>
+                      </select>
+                    </div>
+
+                    {/* File upload option */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>Or Upload Custom Audio/Video (MP3/MP4)</span>
+                      <input
+                        type="file"
+                        accept="audio/*,video/mp4"
+                        style={{ fontSize: 12 }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 15 * 1024 * 1024) {
+                              alert('Please choose a file smaller than 15MB for optimal loading speed.');
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              const dataUrl = event.target?.result as string;
+                              const tempAudio = new Audio(dataUrl);
+                              tempAudio.onloadedmetadata = () => {
+                                setConfig(prev => ({
+                                  ...prev,
+                                  music: {
+                                    enabled: true,
+                                    url: dataUrl,
+                                    fileName: file.name,
+                                    startOffset: 0,
+                                    endOffset: Math.min(60, Math.floor(tempAudio.duration)),
+                                    loop: true,
+                                    volume: 0.5
+                                  }
+                                }));
+                              };
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <span style={{ fontSize: 10, color: '#888' }}>
+                        Uploaded file: <span style={{ fontWeight: 'bold', color: '#555' }}>{musicConfig.fileName || 'None'}</span>
+                      </span>
+                    </div>
+
+                    {/* Start/End Trimming offsets */}
+                    <div style={{ display: 'flex', gap: 12, borderTop: '1px solid #EEE', paddingTop: 12 }}>
+                      <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>Start Offset (seconds)</span>
+                        <input
+                          type="number"
+                          className="xp-input"
+                          value={musicConfig.startOffset || 0}
+                          min={0}
+                          onChange={(e) => {
+                            const val = Math.max(0, parseInt(e.target.value) || 0);
+                            setConfig(prev => ({
+                              ...prev,
+                              music: {
+                                ...(prev.music || { enabled: true, loop: true, volume: 0.5 }),
+                                startOffset: val
+                              }
+                            }));
+                          }}
+                          style={{ borderRadius: 6 }}
+                        />
+                      </label>
+                      <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>End Offset (seconds)</span>
+                        <input
+                          type="number"
+                          className="xp-input"
+                          value={musicConfig.endOffset || 60}
+                          min={musicConfig.startOffset || 0}
+                          onChange={(e) => {
+                            const val = Math.max(musicConfig.startOffset || 0, parseInt(e.target.value) || 60);
+                            setConfig(prev => ({
+                              ...prev,
+                              music: {
+                                ...(prev.music || { enabled: true, loop: true, volume: 0.5 }),
+                                endOffset: val
+                              }
+                            }));
+                          }}
+                          style={{ borderRadius: 6 }}
+                        />
+                      </label>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#666' }}>
+                      <span>Selected portion: {(musicConfig.endOffset || 60) - (musicConfig.startOffset || 0)} seconds</span>
+                      <span>Loop enabled</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
