@@ -100,11 +100,32 @@ export default function CreatePage() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        height: '100vh',
+        maxHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
         background: 'linear-gradient(135deg, #F0F4FF 0%, #F8F0FF 100%)',
         fontFamily: 'var(--font-nunito)',
+        overflow: 'hidden',
       }}
     >
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #F1F5F9;
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #CBD5E1;
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #94A3B8;
+        }
+      `}</style>
       {/* Header */}
       <div style={{
         background: 'linear-gradient(90deg, #1F5FA6, #1A3FA0)',
@@ -142,11 +163,11 @@ export default function CreatePage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 52px)' }}>
+      <div style={{ display: 'flex', flex: 1, height: 'calc(100vh - 52px)', overflow: 'hidden' }}>
         {/* Left: tabs + form */}
-        <div style={{ width: 380, borderRight: '1px solid #E0E0E0', background: 'white', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ width: 380, borderRight: '1px solid #E0E0E0', background: 'white', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
           {/* Tab list */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '12px', borderBottom: '1px solid #EEE', background: '#F8F8F8' }}>
+          <div className="custom-scrollbar" style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 4, padding: '10px 12px', borderBottom: '1px solid #EEE', background: '#F8F8F8', flexShrink: 0 }}>
             {TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -156,13 +177,15 @@ export default function CreatePage() {
                   color: activeTab === tab.id ? 'white' : '#555',
                   border: `1px solid ${activeTab === tab.id ? '#1F5FA6' : '#DDD'}`,
                   borderRadius: 6,
-                  padding: '4px 10px',
+                  padding: '5px 10px',
                   fontSize: 11,
                   fontWeight: 600,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 4,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                   fontFamily: 'var(--font-nunito)',
                 }}
               >
@@ -172,7 +195,7 @@ export default function CreatePage() {
           </div>
 
           {/* Tab content */}
-          <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
+          <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
             {activeTab === 'basic' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>⚙️ Basic Info</h3>
@@ -262,40 +285,65 @@ export default function CreatePage() {
 
             {activeTab === 'gacha' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🎰 Gacha Machine</h3>
-                <div style={{ fontSize: 12, color: '#888' }}>Add 3–10 capsule messages for your recipient to discover!</div>
-                {(gachaConfig.capsules || []).map((cap: { message: string; emoji: string; rarity: string; color: string }, i: number) => (
-                  <div key={i} style={{ background: '#F8F8F8', borderRadius: 8, padding: 12, border: '1px solid #EEE' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#888', marginBottom: 6 }}>Capsule {i + 1} {cap.rarity === 'legendary' ? '🌟' : cap.rarity === 'rare' ? '✨' : ''}</div>
-                    <textarea
-                      className="xp-input"
-                      value={cap.message}
-                      onChange={(e) => {
-                        const newCapsules = [...gachaConfig.capsules];
-                        newCapsules[i] = { ...newCapsules[i], message: e.target.value };
-                        updateAppConfig('gacha', { capsules: newCapsules });
-                      }}
-                      rows={2}
-                      style={{ borderRadius: 4, resize: 'vertical', fontSize: 12 }}
-                    />
-                    <select
-                      value={cap.rarity}
-                      onChange={(e) => {
-                        const newCapsules = [...gachaConfig.capsules];
-                        newCapsules[i] = { ...newCapsules[i], rarity: e.target.value };
-                        updateAppConfig('gacha', { capsules: newCapsules });
-                      }}
-                      style={{ marginTop: 6, fontSize: 11, padding: '2px 4px', borderRadius: 4, border: '1px solid #DDD', fontFamily: 'var(--font-nunito)' }}
-                    >
-                      <option value="normal">Normal</option>
-                      <option value="rare">✨ Rare</option>
-                      <option value="legendary">🌟 Legendary</option>
-                    </select>
-                  </div>
-                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🎰 Gacha Machine</h3>
+                  <span style={{ fontSize: 11, color: '#888', fontWeight: 600 }}>{(gachaConfig.capsules || []).length} Capsules</span>
+                </div>
+                <div style={{ fontSize: 12, color: '#888', background: '#F8F9FA', padding: 8, borderRadius: 6, border: '1px solid #E9ECEF' }}>
+                  💡 Scroll down to add, edit, or delete capsule messages for your recipient!
+                </div>
+
+                <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {(gachaConfig.capsules || []).map((cap: { message: string; emoji: string; rarity: string; color: string }, i: number) => (
+                    <div key={i} style={{ background: '#F8F8F8', borderRadius: 8, padding: 12, border: '1px solid #EEE', position: 'relative' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#666' }}>
+                          Capsule {i + 1} {cap.rarity === 'legendary' ? '🌟' : cap.rarity === 'rare' ? '✨' : ''}
+                        </div>
+                        {(gachaConfig.capsules || []).length > 1 && (
+                          <button
+                            onClick={() => {
+                              const newCapsules = gachaConfig.capsules.filter((_: unknown, index: number) => index !== i);
+                              updateAppConfig('gacha', { capsules: newCapsules });
+                            }}
+                            title="Delete Capsule"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#E05555' }}
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        className="xp-input"
+                        value={cap.message}
+                        onChange={(e) => {
+                          const newCapsules = [...gachaConfig.capsules];
+                          newCapsules[i] = { ...newCapsules[i], message: e.target.value };
+                          updateAppConfig('gacha', { capsules: newCapsules });
+                        }}
+                        rows={2}
+                        style={{ borderRadius: 4, resize: 'vertical', fontSize: 12 }}
+                      />
+                      <select
+                        value={cap.rarity}
+                        onChange={(e) => {
+                          const newCapsules = [...gachaConfig.capsules];
+                          newCapsules[i] = { ...newCapsules[i], rarity: e.target.value };
+                          updateAppConfig('gacha', { capsules: newCapsules });
+                        }}
+                        style={{ marginTop: 6, fontSize: 11, padding: '3px 6px', borderRadius: 4, border: '1px solid #DDD', fontFamily: 'var(--font-nunito)' }}
+                      >
+                        <option value="normal">Normal</option>
+                        <option value="rare">✨ Rare</option>
+                        <option value="legendary">🌟 Legendary</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+
                 <button
                   onClick={() => updateAppConfig('gacha', { capsules: [...(gachaConfig.capsules || []), { message: '', emoji: '💝', rarity: 'normal', color: '#FFB7C5' }] })}
-                  style={{ background: 'none', border: '2px dashed #DDD', borderRadius: 8, padding: '8px', fontSize: 12, cursor: 'pointer', color: '#888', fontFamily: 'var(--font-nunito)' }}
+                  style={{ background: 'none', border: '2px dashed #CBD5E1', borderRadius: 8, padding: '10px', fontSize: 12, cursor: 'pointer', color: '#1F5FA6', fontWeight: 700, fontFamily: 'var(--font-nunito)' }}
                 >
                   + Add Capsule
                 </button>
@@ -660,7 +708,7 @@ export default function CreatePage() {
         </div>
 
         {/* Right: preview */}
-        <div style={{ flex: 1, background: '#F0F4FF', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+        <div className="custom-scrollbar" style={{ flex: 1, background: '#F0F4FF', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, height: '100%', overflowY: 'auto' }}>
           <div style={{ fontSize: 13, color: '#888', marginBottom: 16, textAlign: 'center' }}>Live Preview</div>
 
           {/* Skeuomorphic Retro Monitor wrapping the live interactive Desktop */}
