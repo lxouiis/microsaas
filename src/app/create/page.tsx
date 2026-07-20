@@ -499,6 +499,202 @@ export default function CreatePage() {
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Ambient Background Music URL</span>
                   <input className="xp-input" value={photosConfig.musicUrl || ''} onChange={(e) => updateAppConfig('photos', { musicUrl: e.target.value })} placeholder="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" style={{ borderRadius: 6 }} />
                 </label>
+
+                {/* ── Photo Uploader & List Manager ───────────────────── */}
+                <div style={{ borderTop: '1px solid #EEE', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: '#1A1A1A' }}>🖼️ Scrapbook Photos</span>
+                    <span style={{ fontSize: 11, color: '#888' }}>
+                      {((photosConfig.pages?.[0]?.photos) || (photosConfig.photos) || []).length} Photos
+                    </span>
+                  </div>
+
+                  {/* Direct File Uploader Box */}
+                  <label
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '16px',
+                      border: '2px dashed #CBD5E1',
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      background: '#F8FAFC',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <span style={{ fontSize: 24 }}>📁</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#1F5FA6', marginTop: 4 }}>Upload Photo File</span>
+                    <span style={{ fontSize: 10, color: '#888', marginTop: 2 }}>Click to choose image from your computer (PNG, JPG)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (evt) => {
+                            const newUrl = evt.target?.result as string;
+                            const newPhotoItem = {
+                              id: `p-${Date.now()}`,
+                              url: newUrl,
+                              caption: 'New Memory ✨',
+                              date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                              location: 'Special Place',
+                              secretNote: 'Write a secret note for the back of this photo…',
+                              tapeStyle: 'floral' as const,
+                              filter: 'vintage' as const,
+                              sticker: 'heart' as const,
+                            };
+                            
+                            const existingPages = photosConfig.pages || [];
+                            if (existingPages.length > 0) {
+                              const updatedPages = [...existingPages];
+                              updatedPages[0] = {
+                                ...updatedPages[0],
+                                photos: [...(updatedPages[0].photos || []), newPhotoItem],
+                              };
+                              updateAppConfig('photos', { pages: updatedPages });
+                            } else {
+                              const existingPhotos = photosConfig.photos || [];
+                              updateAppConfig('photos', { photos: [...existingPhotos, newPhotoItem] });
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+
+                  {/* Photos Cards List */}
+                  {((photosConfig.pages?.[0]?.photos) || (photosConfig.photos) || []).map((photo: { id?: string; url: string; caption: string; secretNote?: string; date?: string; location?: string; tapeStyle?: string; filter?: string; sticker?: string }, idx: number) => (
+                    <div
+                      key={photo.id || idx}
+                      style={{
+                        background: '#F8F9FA',
+                        borderRadius: 8,
+                        padding: 12,
+                        border: '1px solid #E2E8F0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        {/* Thumbnail */}
+                        <div style={{ width: 48, height: 48, borderRadius: 6, overflow: 'hidden', background: '#EEE', flexShrink: 0 }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photo.url} alt="Thumbnail" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#333' }}>Photo {idx + 1}</span>
+                          <input
+                            className="xp-input"
+                            value={photo.caption || ''}
+                            onChange={(e) => {
+                              const existingPages = photosConfig.pages || [];
+                              if (existingPages.length > 0) {
+                                const updatedPages = [...existingPages];
+                                const updatedPhotos = [...(updatedPages[0].photos || [])];
+                                updatedPhotos[idx] = { ...updatedPhotos[idx], caption: e.target.value };
+                                updatedPages[0] = { ...updatedPages[0], photos: updatedPhotos };
+                                updateAppConfig('photos', { pages: updatedPages });
+                              } else {
+                                const updatedPhotos = [...(photosConfig.photos || [])];
+                                updatedPhotos[idx] = { ...updatedPhotos[idx], caption: e.target.value };
+                                updateAppConfig('photos', { photos: updatedPhotos });
+                              }
+                            }}
+                            placeholder="Photo caption…"
+                            style={{ borderRadius: 4, fontSize: 11, padding: '3px 6px' }}
+                          />
+                        </div>
+                        <button
+                          onClick={() => {
+                            const existingPages = photosConfig.pages || [];
+                            if (existingPages.length > 0) {
+                              const updatedPages = [...existingPages];
+                              const updatedPhotos = (updatedPages[0].photos || []).filter((_: unknown, i: number) => i !== idx);
+                              updatedPages[0] = { ...updatedPages[0], photos: updatedPhotos };
+                              updateAppConfig('photos', { pages: updatedPages });
+                            } else {
+                              const updatedPhotos = (photosConfig.photos || []).filter((_: unknown, i: number) => i !== idx);
+                              updateAppConfig('photos', { photos: updatedPhotos });
+                            }
+                          }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#E05555' }}
+                          title="Delete photo"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+
+                      {/* Secret Note Back */}
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#888' }}>💌 Secret Note (Back of Polaroid)</span>
+                        <textarea
+                          className="xp-input"
+                          value={photo.secretNote || ''}
+                          onChange={(e) => {
+                            const existingPages = photosConfig.pages || [];
+                            if (existingPages.length > 0) {
+                              const updatedPages = [...existingPages];
+                              const updatedPhotos = [...(updatedPages[0].photos || [])];
+                              updatedPhotos[idx] = { ...updatedPhotos[idx], secretNote: e.target.value };
+                              updatedPages[0] = { ...updatedPages[0], photos: updatedPhotos };
+                              updateAppConfig('photos', { pages: updatedPages });
+                            } else {
+                              const updatedPhotos = [...(photosConfig.photos || [])];
+                              updatedPhotos[idx] = { ...updatedPhotos[idx], secretNote: e.target.value };
+                              updateAppConfig('photos', { photos: updatedPhotos });
+                            }
+                          }}
+                          rows={2}
+                          placeholder="Note written on back of photo…"
+                          style={{ borderRadius: 4, fontSize: 11, resize: 'vertical' }}
+                        />
+                      </label>
+
+                      {/* Date & Location tags */}
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <input
+                          className="xp-input"
+                          value={photo.date || ''}
+                          onChange={(e) => {
+                            const existingPages = photosConfig.pages || [];
+                            if (existingPages.length > 0) {
+                              const updatedPages = [...existingPages];
+                              const updatedPhotos = [...(updatedPages[0].photos || [])];
+                              updatedPhotos[idx] = { ...updatedPhotos[idx], date: e.target.value };
+                              updatedPages[0] = { ...updatedPages[0], photos: updatedPhotos };
+                              updateAppConfig('photos', { pages: updatedPages });
+                            }
+                          }}
+                          placeholder="Date (e.g. Oct 14)"
+                          style={{ borderRadius: 4, fontSize: 10, flex: 1, padding: '2px 6px' }}
+                        />
+                        <input
+                          className="xp-input"
+                          value={photo.location || ''}
+                          onChange={(e) => {
+                            const existingPages = photosConfig.pages || [];
+                            if (existingPages.length > 0) {
+                              const updatedPages = [...existingPages];
+                              const updatedPhotos = [...(updatedPages[0].photos || [])];
+                              updatedPhotos[idx] = { ...updatedPhotos[idx], location: e.target.value };
+                              updatedPages[0] = { ...updatedPages[0], photos: updatedPhotos };
+                              updateAppConfig('photos', { pages: updatedPages });
+                            }
+                          }}
+                          placeholder="Location"
+                          style={{ borderRadius: 4, fontSize: 10, flex: 1, padding: '2px 6px' }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
