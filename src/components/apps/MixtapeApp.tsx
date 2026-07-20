@@ -283,9 +283,30 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
     setPhase('case');
   };
 
-  const spotifyEmbedId = config.spotifyUrl?.includes('playlist/')
-    ? config.spotifyUrl.split('playlist/')[1]?.split('?')[0]
-    : null;
+function getSpotifyEmbedUrl(url?: string): string | null {
+  if (!url) return null;
+  const match = url.match(/spotify\.com\/(playlist|track|album|artist|episode)\/([a-zA-Z0-9]+)/);
+  if (match) {
+    const [, type, id] = match;
+    return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;
+  }
+  return null;
+}
+
+function getYouTubeEmbedUrl(url?: string): string | null {
+  if (!url) return null;
+  // Playlist
+  const listMatch = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+  if (listMatch) {
+    return `https://www.youtube.com/embed/videoseries?list=${listMatch[1]}`;
+  }
+  // Video (watch?v= or youtu.be/ or embed/ or music.youtube.com/watch?v=)
+  const videoMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+  if (videoMatch) {
+    return `https://www.youtube.com/embed/${videoMatch[1]}`;
+  }
+  return null;
+}
 
   const cassetteStyle = (config as any).cassette_style || {};
   const patternId = cassetteStyle.pattern_id || 'floral';
@@ -607,47 +628,43 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
             )}
 
             {/* Spotify embed */}
-            {spotifyEmbedId && (
+            {getSpotifyEmbedUrl(config.spotifyUrl) && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 transition={{ duration: 0.4 }}
+                style={{ marginTop: 12 }}
               >
                 <iframe
-                  src={`https://open.spotify.com/embed/playlist/${spotifyEmbedId}?utm_source=generator&theme=0`}
+                  src={getSpotifyEmbedUrl(config.spotifyUrl)!}
                   width="100%"
                   height="152"
                   frameBorder="0"
                   allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                   loading="lazy"
-                  style={{ borderRadius: 12 }}
+                  style={{ borderRadius: 12, border: 'none' }}
                 />
               </motion.div>
             )}
 
-            {!spotifyEmbedId && config.youtubeUrl && (
+            {/* YouTube embed */}
+            {getYouTubeEmbedUrl(config.youtubeUrl) && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                style={{ textAlign: 'center' }}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                transition={{ duration: 0.4 }}
+                style={{ marginTop: 12 }}
               >
-                <a
-                  href={config.youtubeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-block',
-                    background: '#FF0000',
-                    color: 'white',
-                    padding: '8px 16px',
-                    borderRadius: 20,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    textDecoration: 'none',
-                  }}
-                >
-                  ▶ Open in YouTube Music
-                </a>
+                <iframe
+                  src={getYouTubeEmbedUrl(config.youtubeUrl)!}
+                  width="100%"
+                  height="180"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  loading="lazy"
+                  style={{ borderRadius: 12, border: 'none' }}
+                />
               </motion.div>
             )}
           </motion.div>

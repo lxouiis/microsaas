@@ -743,23 +743,23 @@ export default function MixtapeCreator({ config, onChange }: MixtapeCreatorProps
 
           {/* Spotify and YouTube fields */}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Spotify Playlist URL (Embeds widget)</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Spotify Link (Track, Album, or Playlist)</span>
             <input
               className="xp-input"
               value={config.spotifyUrl || ''}
               onChange={(e) => updateConfig({ spotifyUrl: e.target.value })}
-              placeholder="https://open.spotify.com/playlist/..."
+              placeholder="https://open.spotify.com/track/... or /playlist/..."
               style={{ borderRadius: 6 }}
             />
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>YouTube Music Link (Optional fallback)</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>YouTube or YouTube Music Link</span>
             <input
               className="xp-input"
               value={config.youtubeUrl || ''}
               onChange={(e) => updateConfig({ youtubeUrl: e.target.value })}
-              placeholder="https://music.youtube.com/..."
+              placeholder="https://www.youtube.com/watch?v=... or music.youtube.com/..."
               style={{ borderRadius: 6 }}
             />
           </label>
