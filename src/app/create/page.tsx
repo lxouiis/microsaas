@@ -52,6 +52,7 @@ export default function CreatePage() {
       // 1. Instant local fallback
       if (typeof window !== 'undefined') {
         localStorage.setItem(`desktop_${generatedSlug}`, JSON.stringify(savedConfig));
+        localStorage.setItem('desktop_latest', JSON.stringify(savedConfig));
       }
       
       // 2. Race Supabase save with a 5-second timeout so it never hangs

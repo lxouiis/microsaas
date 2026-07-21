@@ -17,10 +17,11 @@ export default function DesktopPageClient({ config }: DesktopPageClientProps) {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const localData = localStorage.getItem(`desktop_${config.slug}`);
+      const localData = localStorage.getItem(`desktop_${config.slug}`) || localStorage.getItem('desktop_latest');
       if (localData) {
         try {
-          setCurrentConfig(JSON.parse(localData));
+          const parsed = JSON.parse(localData);
+          setCurrentConfig(parsed);
         } catch (e) {
           console.error('Failed to parse local config', e);
         }
