@@ -7,7 +7,7 @@ import { DEMO_DESKTOP } from '@/lib/demoData';
 
 type TabType = 'basic' | 'mail' | 'gacha' | 'mixtape' | 'ticket' | 'photos' | 'calendar' | 'secret' | 'game' | 'appearance' | 'purr' | 'music';
 
-import { saveDesktop } from '@/app/actions';
+// saveDesktop is now called via /api/save-desktop fetch route
 import Desktop from '@/components/desktop/Desktop';
 import RetroMonitor from '@/components/desktop/RetroMonitor';
 import MixtapeCreator from '@/components/desktop/MixtapeCreator';
@@ -49,22 +49,32 @@ export default function CreatePage() {
       
       const savedConfig = { ...config, slug: generatedSlug };
       
-      // 1. Instant local fallback
+      // 1. Always save locally first (instant fallback)
       if (typeof window !== 'undefined') {
         localStorage.setItem(`desktop_${generatedSlug}`, JSON.stringify(savedConfig));
         localStorage.setItem('desktop_latest', JSON.stringify(savedConfig));
       }
       
-      // 2. Race Supabase save with a 5-second timeout so it never hangs
-      const savePromise = saveDesktop(generatedSlug, savedConfig);
-      const timeoutPromise = new Promise<{ success: boolean; isTimeout?: boolean }>((resolve) =>
-        setTimeout(() => resolve({ success: true, isTimeout: true }), 5000)
-      );
+      // 2. Save to Supabase via API route (more reliable than Server Actions for large payloads)
+      try {
+        const res = await fetch('/api/save-desktop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: generatedSlug, config: savedConfig }),
+        });
+        const result = await res.json();
+        if (!result.success) {
+          console.error('Supabase save failed:', result.error);
+        } else {
+          console.log('✅ Saved to Supabase:', generatedSlug);
+        }
+      } catch (saveErr) {
+        console.warn('Supabase save error (continuing with local):', saveErr);
+      }
 
-      await Promise.race([savePromise, timeoutPromise]);
       setPublished(true);
     } catch (err) {
-      console.warn('Publish completed with fallback:', err);
+      console.warn('Publish error:', err);
       setPublished(true);
     } finally {
       setPublishing(false);
