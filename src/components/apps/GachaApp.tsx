@@ -46,8 +46,8 @@ export default function GachaApp({ config }: GachaAppProps) {
   const handleCoinInsert = async () => {
     if (phase !== 'idle' || allUsed) return;
 
-    // Check credits before allowing spin (needs 200 Credits)
-    if (credits < 200) {
+    // Check credits before allowing spin (needs 1 Credit)
+    if (credits < 1) {
       sounds.error();
       setInsufficientCredits(true);
       setTimeout(() => setInsufficientCredits(false), 1000);
@@ -57,8 +57,8 @@ export default function GachaApp({ config }: GachaAppProps) {
     const nextIdx = getNextCapsuleIndex();
     if (nextIdx === null) return;
 
-    // Deduct 200 credits
-    deductCredits(200);
+    // Deduct 1 credit
+    deductCredits(1);
 
     sounds.coinDrop();
     setPhase('coin');
@@ -101,7 +101,7 @@ export default function GachaApp({ config }: GachaAppProps) {
   const handleCoinReturn = () => {
     if (phase !== 'idle') return;
     sounds.coinDrop();
-    addCredits(200);
+    addCredits(1);
     handleReset();
   };
 

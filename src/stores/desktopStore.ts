@@ -25,7 +25,7 @@ export const useDesktopStore = create<DesktopStore>()(
       starEarned: false,
       gachaUsed: false,
       openedCapsules: [],
-      credits: 400,
+      credits: 200000,
       notification: null,
 
       toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
@@ -35,7 +35,7 @@ export const useDesktopStore = create<DesktopStore>()(
             openedCapsules: [...state.openedCapsules, index],
             gachaUsed: true,
           })),
-      resetGacha: () => set({ openedCapsules: [], gachaUsed: false, credits: 400, notification: null }),
+      resetGacha: () => set({ openedCapsules: [], gachaUsed: false, credits: 200000, notification: null }),
       addCredits: (amount) => set((state) => ({ credits: state.credits + amount })),
       deductCredits: (amount) => set((state) => ({ credits: Math.max(0, state.credits - amount) })),
       showNotification: (msg) => set({ notification: msg }),
