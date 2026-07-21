@@ -18,6 +18,7 @@ export default function CreatePage() {
   const [slug, setSlug] = useState('');
   const [published, setPublished] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const updateConfig = (updates: Partial<DesktopConfig>) => {
     setConfig((prev) => ({ ...prev, ...updates }));
@@ -921,51 +922,110 @@ export default function CreatePage() {
             </RetroMonitor>
           </div>
 
-          {/* Published URL */}
+          {/* Published URL Centered Modal Backdrop */}
           <AnimatePresence>
             {published && (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 style={{
-                  marginTop: 24,
-                  background: 'white',
-                  borderRadius: 12,
-                  padding: '16px 20px',
-                  border: '2px solid #4EBFBF',
-                  textAlign: 'center',
-                  maxWidth: 320,
-                  boxShadow: '0 4px 16px rgba(78,191,191,0.3)',
+                  position: 'fixed',
+                  inset: 0,
+                  background: 'rgba(0,0,0,0.5)',
+                  backdropFilter: 'blur(4px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 9999,
+                  padding: 20,
                 }}
+                onClick={() => setPublished(false)}
               >
-                <div style={{ fontSize: 24, marginBottom: 6 }}>🎉</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1A1A', marginBottom: 6 }}>Your desktop is live!</div>
-                <div style={{ fontSize: 11, color: '#888', marginBottom: 10 }}>Share this link with {config.recipientName}:</div>
-                <div style={{
-                  background: '#F0F8FF',
-                  border: '1px solid #4EBFBF',
-                  borderRadius: 8,
-                  padding: '8px 12px',
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                  color: '#1F5FA6',
-                  wordBreak: 'break-all',
-                }}>
-                  {shareUrl}
-                </div>
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 10 }}>
+                <motion.div
+                  initial={{ scale: 0.85, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    background: 'white',
+                    borderRadius: 16,
+                    padding: '28px 24px',
+                    maxWidth: 420,
+                    width: '100%',
+                    textAlign: 'center',
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+                    border: '3px solid #4EBFBF',
+                    position: 'relative',
+                  }}
+                >
                   <button
-                    onClick={() => navigator.clipboard.writeText(shareUrl)}
-                    style={{ background: '#4EBFBF', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 11, color: 'white', cursor: 'pointer', fontFamily: 'var(--font-nunito)', fontWeight: 700 }}
+                    onClick={() => setPublished(false)}
+                    style={{ position: 'absolute', top: 12, right: 14, border: 'none', background: 'none', fontSize: 18, cursor: 'pointer', color: '#888' }}
                   >
-                    📋 Copy Link
+                    ✕
                   </button>
-                  <Link href={shareUrl} target="_blank" style={{ textDecoration: 'none' }}>
-                    <button style={{ background: '#F0F0F0', border: '1px solid #DDD', borderRadius: 8, padding: '6px 14px', fontSize: 11, color: '#333', cursor: 'pointer', fontFamily: 'var(--font-nunito)', fontWeight: 700 }}>
-                      👁 Preview
+                  <div style={{ fontSize: 36, marginBottom: 8 }}>🎉</div>
+                  <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1A1A1A', margin: '0 0 6px' }}>Your Desktop Gift is Live!</h2>
+                  <p style={{ fontSize: 12, color: '#666', margin: '0 0 16px' }}>
+                    Send this link to <strong>{config.recipientName || 'your recipient'}</strong>:
+                  </p>
+                  
+                  <div style={{
+                    background: '#F0F8FF',
+                    border: '1.5px solid #4EBFBF',
+                    borderRadius: 10,
+                    padding: '10px 14px',
+                    fontSize: 13,
+                    fontFamily: 'monospace',
+                    color: '#1F5FA6',
+                    wordBreak: 'break-all',
+                    marginBottom: 16,
+                    fontWeight: 700,
+                  }}>
+                    {shareUrl}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(shareUrl);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2500);
+                      }}
+                      style={{
+                        background: copied ? '#10B981' : '#4EBFBF',
+                        border: 'none',
+                        borderRadius: 10,
+                        padding: '10px 20px',
+                        fontSize: 12,
+                        color: 'white',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontFamily: 'var(--font-nunito)',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {copied ? '✅ Copied to Clipboard!' : '📋 Copy Share Link'}
                     </button>
-                  </Link>
-                </div>
+
+                    <Link href={shareUrl} target="_blank" style={{ textDecoration: 'none' }}>
+                      <button style={{
+                        background: '#F1F5F9',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: 10,
+                        padding: '10px 18px',
+                        fontSize: 12,
+                        color: '#334155',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontFamily: 'var(--font-nunito)',
+                      }}>
+                        👁 Open Desktop
+                      </button>
+                    </Link>
+                  </div>
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
