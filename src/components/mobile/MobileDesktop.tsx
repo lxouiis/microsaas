@@ -12,7 +12,7 @@ interface MobileDesktopProps {
 
 export default function MobileDesktop({ config }: MobileDesktopProps) {
   const [bootDone, setBootDone] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
   const [isLandscape, setIsLandscape] = useState(false);
   const [zoomMode, setZoomMode] = useState<'fit' | 'readable'>('readable');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -31,12 +31,8 @@ export default function MobileDesktop({ config }: MobileDesktopProps) {
     };
   }, []);
 
-  // Show guide popup automatically 400ms after boot finishes
   const handleBootComplete = () => {
     setBootDone(true);
-    setTimeout(() => {
-      setShowGuide(true);
-    }, 400);
   };
 
   // Virtual desktop dimensions
@@ -111,6 +107,36 @@ export default function MobileDesktop({ config }: MobileDesktopProps) {
         WebkitOverflowScrolling: 'touch',
       }}
     >
+      {/* Instructions Quick Banner */}
+      <div
+        onClick={() => setShowGuide(true)}
+        style={{
+          width: screenW,
+          maxWidth: '100%',
+          marginBottom: 10,
+          background: 'linear-gradient(180deg,#FFF9C4 0%,#FFF59D 100%)',
+          border: '2px solid #FBC02D',
+          borderRadius: 8,
+          padding: '8px 12px',
+          fontSize: 12,
+          fontWeight: 700,
+          color: '#5D4037',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 16 }}>💡</span>
+          <span><strong>Tap any icon inside to open apps!</strong></span>
+        </div>
+        <span style={{ fontSize: 11, color: '#F57F17', fontWeight: 800, textDecoration: 'underline', flexShrink: 0 }}>
+          Full Guide ❓
+        </span>
+      </div>
+
       {/* ── RETRO MONITOR CASING ── */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
