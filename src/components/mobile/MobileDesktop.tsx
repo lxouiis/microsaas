@@ -12,7 +12,9 @@ interface MobileDesktopProps {
 
 export default function MobileDesktop({ config }: MobileDesktopProps) {
   const [bootDone, setBootDone] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
+  const [zoomMode, setZoomMode] = useState<'fit' | 'readable'>('readable');
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Detect orientation
@@ -29,16 +31,21 @@ export default function MobileDesktop({ config }: MobileDesktopProps) {
     };
   }, []);
 
+  // Show guide popup automatically 400ms after boot finishes
+  const handleBootComplete = () => {
+    setBootDone(true);
+    setTimeout(() => {
+      setShowGuide(true);
+    }, 400);
+  };
+
   // Virtual desktop dimensions
   const VIRT_W = 1280;
   const VIRT_H = 720;
 
-  // Calculate monitor screen size to fit viewport
-  // Portrait: use 92% of viewport width
-  // Landscape: use 88% of viewport width but cap to avoid overflow
-  const [screenW, setScreenW] = useState(320);
-  const [screenH, setScreenH] = useState(180);
-  const [scale, setScale] = useState(0.25);
+  const [screenW, setScreenW] = useState(340);
+  const [screenH, setScreenH] = useState(240);
+  const [scale, setScale] = useState(0.45);
 
   useEffect(() => {
     const calc = () => {
@@ -46,21 +53,39 @@ export default function MobileDesktop({ config }: MobileDesktopProps) {
       const vh = window.innerHeight;
       const landscape = vw > vh;
 
-      let maxW: number;
+      let sw: number;
+      let sh: number;
+
       if (landscape) {
-        // In landscape: leave room for the CTA below — cap height at 70% of vh
-        maxW = Math.min(vw * 0.88, (vh * 0.70) * (VIRT_W / VIRT_H));
+        // Landscape mode
+        const maxW = Math.min(vw * 0.92, (vh * 0.72) * (VIRT_W / VIRT_H));
+        sw = Math.floor(maxW);
+        sh = Math.floor(sw * (VIRT_H / VIRT_W));
       } else {
-        // Portrait: width drives everything
-        maxW = vw * 0.92;
+        // Portrait mode — make screen larger and readable
+        sw = Math.floor(vw * 0.95);
+        if (zoomMode === 'readable') {
+          // Increase height significantly so elements are larger & easily readable
+          sh = Math.floor(vh * 0.52);
+        } else {
+          // Fit ratio
+          sh = Math.floor(sw * (VIRT_H / VIRT_W));
+        }
       }
 
-      const sw = Math.floor(maxW);
-      const sh = Math.floor(sw * (VIRT_H / VIRT_W));
       setScreenW(sw);
       setScreenH(sh);
-      setScale(sw / VIRT_W);
+
+      // Determine scale based on mode
+      if (!landscape && zoomMode === 'readable') {
+        // Scale up by ~1.4x fit scale for clear readable text and icons
+        const fitScale = sw / VIRT_W;
+        setScale(Math.max(0.42, fitScale * 1.45));
+      } else {
+        setScale(sw / VIRT_W);
+      }
     };
+
     calc();
     window.addEventListener('resize', calc);
     window.addEventListener('orientationchange', calc);
@@ -68,52 +93,55 @@ export default function MobileDesktop({ config }: MobileDesktopProps) {
       window.removeEventListener('resize', calc);
       window.removeEventListener('orientationchange', calc);
     };
-  }, []);
+  }, [zoomMode]);
 
   return (
     <div
       style={{
         minHeight: '100dvh',
-        background: '#F2F2F0',
+        width: '100%',
+        background: '#F0EFEB',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: isLandscape ? 'flex-start' : 'center',
-        padding: isLandscape ? '16px 0 12px' : '0 0 24px',
-        fontFamily: 'var(--font-nunito, monospace)',
+        justifyContent: 'flex-start',
+        padding: '16px 8px 36px',
+        fontFamily: 'var(--font-nunito, system-ui)',
         overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
       }}
     >
       {/* ── RETRO MONITOR CASING ── */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-        style={{ width: screenW, flexShrink: 0 }}
+        transition={{ duration: 0.4 }}
+        style={{ width: screenW, flexShrink: 0, position: 'relative' }}
       >
-        {/* Outer bezel — the monitor casing */}
+        {/* Outer bezel */}
         <div
           style={{
-            backgroundColor: '#D0CFC8',
-            borderRadius: 8,
-            padding: 8,
+            backgroundColor: '#D4D3CB',
+            borderRadius: 12,
+            padding: '10px 10px 8px',
             boxShadow:
-              'inset 2px 2px 0px #FFFFFF, inset -2px -2px 0px #6A6A6A, 0 12px 36px rgba(0,0,0,0.22), 0 4px 8px rgba(0,0,0,0.12)',
-            border: '3px solid',
-            borderColor: '#E8E8E4 #8A8A84 #8A8A84 #E8E8E4',
+              'inset 2px 2px 0px #FFFFFF, inset -2px -2px 0px #5F5F58, 0 16px 40px rgba(0,0,0,0.25), 0 4px 10px rgba(0,0,0,0.12)',
+            border: '3.5px solid',
+            borderColor: '#EFEFEA #7F7F78 #7F7F78 #EFEFEA',
           }}
         >
-          {/* Inner screen sunken border */}
+          {/* Inner screen frame with scrollable inner viewport */}
           <div
             ref={containerRef}
             style={{
               position: 'relative',
               width: '100%',
               height: screenH,
-              borderRadius: 3,
-              overflow: 'hidden',
+              borderRadius: 5,
+              overflow: 'auto',
+              WebkitOverflowScrolling: 'touch',
               border: '3px solid',
-              borderColor: '#6A6A6A #E8E8E4 #E8E8E4 #6A6A6A',
+              borderColor: '#5F5F58 #EFEFEA #EFEFEA #5F5F58',
               background: '#000',
             }}
           >
@@ -124,9 +152,7 @@ export default function MobileDesktop({ config }: MobileDesktopProps) {
                 height: VIRT_H,
                 transform: `scale(${scale})`,
                 transformOrigin: 'top left',
-                position: 'absolute',
-                top: 0,
-                left: 0,
+                position: 'relative',
               }}
             >
               <AnimatePresence>
@@ -135,110 +161,336 @@ export default function MobileDesktop({ config }: MobileDesktopProps) {
                     key="boot"
                     recipientName={config.recipientName}
                     welcomeMessage={config.welcomeMessage}
-                    onComplete={() => setBootDone(true)}
+                    onComplete={handleBootComplete}
                   />
                 )}
               </AnimatePresence>
               {bootDone && <Desktop config={config} />}
             </div>
 
-            {/* CRT scanline overlay */}
+            {/* CRT scanlines overlay */}
             <div
               style={{
-                position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 9999,
-                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 3px)',
-              }}
-            />
-            {/* Screen glare */}
-            <div
-              style={{
-                position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 9998,
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.07) 0%, transparent 55%, rgba(0,0,0,0.06) 100%)',
+                position: 'fixed',
+                inset: 0,
+                pointerEvents: 'none',
+                zIndex: 999,
+                backgroundImage:
+                  'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 3px)',
               }}
             />
           </div>
 
-          {/* Monitor chin — branding bar */}
+          {/* Monitor chin — branding bar & controls */}
           <div
             style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '6px 8px 2px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 6px 2px',
             }}
           >
             {/* Power LED + label */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <div style={{
-                width: 7, height: 7, borderRadius: '50%',
-                background: '#22c55e',
-                boxShadow: '0 0 5px #22c55e',
-              }} />
-              <span style={{ fontSize: 8, fontFamily: 'monospace', fontWeight: 700, color: '#555', letterSpacing: 1 }}>POWER</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: '#22c55e',
+                  boxShadow: '0 0 6px #22c55e',
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 9,
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  color: '#555',
+                  letterSpacing: 1,
+                }}
+              >
+                POWER
+              </span>
             </div>
 
-            <span style={{ fontSize: 9, fontFamily: 'monospace', fontWeight: 700, color: '#555', letterSpacing: 2 }}>
+            {/* Title / Brand */}
+            <span
+              style={{
+                fontSize: 10,
+                fontFamily: 'monospace',
+                fontWeight: 800,
+                color: '#444',
+                letterSpacing: 1.5,
+              }}
+            >
               ■ DESKTOP DEAR
             </span>
 
-            {/* Fake buttons */}
-            <div style={{ display: 'flex', gap: 3 }}>
-              {[0, 1].map(i => (
-                <div key={i} style={{
-                  width: 14, height: 8,
-                  background: 'linear-gradient(180deg,#D8D8D4 0%,#B8B8B4 100%)',
+            {/* Controls: Help & Zoom Toggle */}
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              {!isLandscape && (
+                <button
+                  onClick={() =>
+                    setZoomMode(zoomMode === 'readable' ? 'fit' : 'readable')
+                  }
+                  style={{
+                    background:
+                      'linear-gradient(180deg,#E8E8E4 0%,#C0C0B8 100%)',
+                    border: '1.5px solid',
+                    borderColor: '#FFF #6A6A64 #6A6A64 #FFF',
+                    borderRadius: 3,
+                    padding: '2px 6px',
+                    fontSize: 9,
+                    fontFamily: 'monospace',
+                    fontWeight: 700,
+                    color: '#333',
+                    cursor: 'pointer',
+                  }}
+                  title="Toggle Zoom / Screen Fit"
+                >
+                  {zoomMode === 'readable' ? '🔍 Fit' : '🔍 Large'}
+                </button>
+              )}
+
+              <button
+                onClick={() => setShowGuide(true)}
+                style={{
+                  background:
+                    'linear-gradient(180deg,#FFE58F 0%,#FFC038 100%)',
                   border: '1.5px solid',
-                  borderColor: '#E8E8E4 #7A7A74 #7A7A74 #E8E8E4',
-                  borderRadius: 1,
-                }} />
-              ))}
+                  borderColor: '#FFF #B37D00 #B37D00 #FFF',
+                  borderRadius: 3,
+                  padding: '2px 7px',
+                  fontSize: 9,
+                  fontFamily: 'monospace',
+                  fontWeight: 800,
+                  color: '#523C00',
+                  cursor: 'pointer',
+                }}
+              >
+                ❓ Guide
+              </button>
             </div>
           </div>
         </div>
 
         {/* Monitor neck */}
-        <div style={{
-          width: 56, height: 20, margin: '0 auto',
-          background: 'linear-gradient(90deg,#888 0%,#D0CFC8 30%,#E8E8E4 50%,#D0CFC8 70%,#888 100%)',
-          borderLeft: '1.5px solid #888', borderRight: '1.5px solid #888', borderBottom: '1.5px solid #888',
-        }} />
+        <div
+          style={{
+            width: 64,
+            height: 18,
+            margin: '0 auto',
+            background:
+              'linear-gradient(90deg,#777 0%,#D4D3CB 25%,#EFEFEA 50%,#D4D3CB 75%,#777 100%)',
+            borderLeft: '1.5px solid #777',
+            borderRight: '1.5px solid #777',
+            borderBottom: '1.5px solid #777',
+          }}
+        />
 
         {/* Monitor base */}
-        <div style={{
-          width: 120, height: 12, margin: '0 auto',
-          borderRadius: '4px 4px 3px 3px',
-          background: 'linear-gradient(180deg,#C8C8C4 0%,#B8B8B4 100%)',
-          border: '2px solid', borderColor: '#E0E0DC #7A7A74 #7A7A74 #E0E0DC',
-          boxShadow: '0 3px 8px rgba(0,0,0,0.15)',
-        }} />
+        <div
+          style={{
+            width: 140,
+            height: 12,
+            margin: '0 auto',
+            borderRadius: '4px 4px 3px 3px',
+            background: 'linear-gradient(180deg,#C8C7BF 0%,#B4B3AB 100%)',
+            border: '2px solid',
+            borderColor: '#E8E8E4 #6F6F68 #6F6F68 #E8E8E4',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+          }}
+        />
       </motion.div>
+
+      {/* ── INSTRUCTIONS POPUP MODAL ── */}
+      <AnimatePresence>
+        {showGuide && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 10000,
+              background: 'rgba(0,0,0,0.55)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 16,
+            }}
+            onClick={() => setShowGuide(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.85, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.85, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="xp-window"
+              style={{
+                maxWidth: 380,
+                width: '100%',
+                backgroundColor: '#ECE9D8',
+                borderRadius: '8px 8px 0 0',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                border: '3px solid #0055EA',
+                overflow: 'hidden',
+              }}
+            >
+              {/* XP Window Titlebar */}
+              <div
+                className="xp-titlebar"
+                style={{
+                  background:
+                    'linear-gradient(180deg, #0058EE 0%, #3593FF 4%, #288EFF 18%, #0055EA 100%)',
+                  padding: '6px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  color: '#FFF',
+                  fontWeight: 'bold',
+                  fontSize: 13,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>💡</span>
+                  <span>How to Explore Your Desktop Dear</span>
+                </div>
+                <button
+                  onClick={() => setShowGuide(false)}
+                  style={{
+                    background:
+                      'linear-gradient(180deg, #E7644E 0%, #B9301B 100%)',
+                    border: '1px solid #FFF',
+                    borderRadius: 3,
+                    color: '#FFF',
+                    fontWeight: 900,
+                    width: 20,
+                    height: 20,
+                    fontSize: 11,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Instructions Body */}
+              <div style={{ padding: 18, fontSize: 13, color: '#222', lineHeight: 1.5 }}>
+                <div
+                  style={{
+                    fontWeight: 800,
+                    fontSize: 15,
+                    marginBottom: 12,
+                    color: '#003399',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <span>💌</span>
+                  <span>Welcome, {config.recipientName || 'Friend'}!</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 18 }}>👆</span>
+                    <div>
+                      <strong>Tap / Double-Tap Icons</strong> to open Love Letters, Gacha Machine, Mixtape, Photos & secrets!
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 18 }}>📜</span>
+                    <div>
+                      <strong>Swipe & Scroll</strong> up/down to view the full monitor screen and explore everything comfortably.
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 18 }}>🎵</span>
+                    <div>
+                      <strong>Background Music</strong>: Click the music banner in the top-right corner to play audio.
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 18 }}>📱</span>
+                    <div>
+                      <strong>Pro-tip</strong>: Turn your phone sideways (landscape mode) for a wide computer view!
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dismiss Button */}
+                <div style={{ marginTop: 18, textAlign: 'center' }}>
+                  <button
+                    onClick={() => setShowGuide(false)}
+                    style={{
+                      background:
+                        'linear-gradient(180deg, #3593FF 0%, #0055EA 100%)',
+                      color: '#FFF',
+                      border: '1px solid #002D80',
+                      borderRadius: 4,
+                      padding: '8px 24px',
+                      fontWeight: 800,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                    }}
+                  >
+                    Got it, let's explore! 🚀
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── CTA BELOW MONITOR ── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5, duration: 0.4 }}
+        transition={{ delay: 0.4, duration: 0.4 }}
         style={{
           marginTop: 20,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 10,
         }}
       >
         <Link href="/create" style={{ textDecoration: 'none' }}>
-          <div style={{
-            fontFamily: 'monospace', fontWeight: 700, fontSize: 13,
-            color: '#444',
-            background: 'linear-gradient(180deg,#E0DFD8 0%,#C8C7C0 100%)',
-            border: '2px solid', borderColor: '#E8E8E4 #7A7A74 #7A7A74 #E8E8E4',
-            borderRadius: 3,
-            padding: '8px 22px',
-            boxShadow: '0 3px 6px rgba(0,0,0,0.1)',
-            letterSpacing: 0.5,
-            cursor: 'pointer',
-          }}>
+          <div
+            style={{
+              fontFamily: 'monospace',
+              fontWeight: 800,
+              fontSize: 13,
+              color: '#333',
+              background: 'linear-gradient(180deg,#EBEBE5 0%,#D0CF8 100%)',
+              border: '2px solid',
+              borderColor: '#FFFFFF #6A6A64 #6A6A64 #FFFFFF',
+              borderRadius: 4,
+              padding: '9px 24px',
+              boxShadow: '0 3px 8px rgba(0,0,0,0.12)',
+              letterSpacing: 0.5,
+              cursor: 'pointer',
+            }}
+          >
             create your own →
           </div>
         </Link>
-        <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#888' }}>
+        <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#777' }}>
           created by{' '}
-          <span style={{ color: '#555', textDecoration: 'underline', cursor: 'pointer' }}>
+          <span style={{ color: '#444', fontWeight: 700, textDecoration: 'underline' }}>
             Desktop Dear
           </span>
         </div>
