@@ -51,6 +51,7 @@ export default function Desktop({ config }: DesktopProps) {
   const { starEarned, notification, hideNotification } = useDesktopStore();
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
 
   const handleRestart = useCallback(() => {
     setTimeout(() => window.location.reload(), 500);
@@ -281,6 +282,158 @@ export default function Desktop({ config }: DesktopProps) {
             </div>
             {/* Balloon content text */}
             <div style={{ lineHeight: 1.4, color: '#333' }}>{notification}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Instructions Popup Window on Desktop */}
+      <AnimatePresence>
+        {showGuide && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 10000,
+              background: 'rgba(0,0,0,0.45)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 16,
+            }}
+            onClick={() => setShowGuide(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="xp-window select-none"
+              style={{
+                maxWidth: 420,
+                width: '100%',
+                backgroundColor: '#ECE9D8',
+                borderRadius: '8px 8px 0 0',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+                border: '3px solid #0055EA',
+                overflow: 'hidden',
+                fontFamily: 'var(--font-nunito, sans-serif)',
+              }}
+            >
+              {/* XP Window Titlebar */}
+              <div
+                className="xp-titlebar"
+                style={{
+                  background:
+                    'linear-gradient(180deg, #0058EE 0%, #3593FF 4%, #288EFF 18%, #0055EA 100%)',
+                  padding: '6px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  color: '#FFF',
+                  fontWeight: 'bold',
+                  fontSize: 13,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>💡</span>
+                  <span>How to Explore Your Desktop Dear</span>
+                </div>
+                <button
+                  onClick={() => setShowGuide(false)}
+                  style={{
+                    background:
+                      'linear-gradient(180deg, #E7644E 0%, #B9301B 100%)',
+                    border: '1px solid #FFF',
+                    borderRadius: 3,
+                    color: '#FFF',
+                    fontWeight: 900,
+                    width: 20,
+                    height: 20,
+                    fontSize: 11,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Instructions Body */}
+              <div style={{ padding: 20, fontSize: 13, color: '#222', lineHeight: 1.5 }}>
+                <div
+                  style={{
+                    fontWeight: 800,
+                    fontSize: 16,
+                    marginBottom: 12,
+                    color: '#003399',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <span>💌</span>
+                  <span>Welcome, {config.recipientName || 'Friend'}!</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 20 }}>🖱️</span>
+                    <div>
+                      <strong>Click / Double-Click Icons</strong> on the desktop to open Love Letters, Gacha Machine, Mixtape, Photos & secrets!
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 20 }}>🖼️</span>
+                    <div>
+                      <strong>Drag Windows</strong> by holding their title bars to move them around freely.
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 20 }}>🎵</span>
+                    <div>
+                      <strong>Ambient Music</strong>: Click the music player in the bottom-right corner to play audio.
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 20 }}>🎈</span>
+                    <div>
+                      <strong>Explore Secrets</strong>: Check the yellow sticky note & explore the start menu!
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dismiss Button */}
+                <div style={{ marginTop: 20, textAlign: 'center' }}>
+                  <button
+                    onClick={() => setShowGuide(false)}
+                    style={{
+                      background:
+                        'linear-gradient(180deg, #3593FF 0%, #0055EA 100%)',
+                      color: '#FFF',
+                      border: '1px solid #002D80',
+                      borderRadius: 4,
+                      padding: '8px 26px',
+                      fontWeight: 800,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                    }}
+                  >
+                    Got it, let's explore! 🚀
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
