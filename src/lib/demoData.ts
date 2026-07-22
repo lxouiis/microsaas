@@ -11,10 +11,10 @@ export const DEMO_DESKTOP: DesktopConfig = {
   welcomeMessage: 'Someone made this little desktop just for you 💌',
   music: {
     enabled: true,
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    fileName: 'Default Dreamy Synth.mp3',
+    url: '/music/MysteryofLove.mp3',
+    fileName: 'Mystery of Love.mp3',
     startOffset: 0,
-    endOffset: 60,
+    endOffset: 300,
     loop: true,
     volume: 0.5,
   },
