@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { MixtapeConfig } from '@/lib/types';
 import { useSound } from '@/hooks/useSound';
+import { useDesktopStore } from '@/stores/desktopStore';
 
 interface MixtapeAppProps {
   config: MixtapeConfig;
@@ -222,12 +223,25 @@ const SpindleGear = ({ spinning }: { spinning: boolean }) => {
 
 export default function MixtapeApp({ config }: MixtapeAppProps) {
   const sounds = useSound();
+  const { setAppPlayingMedia } = useDesktopStore();
   const [phase, setPhase] = useState<'case' | 'door-open' | 'inserting' | 'locking' | 'spinning' | 'playing'>('case');
   const [isPlaying, setIsPlaying] = useState(false);
   const [tapeHiss, setTapeHiss] = useState<{ stop: () => void } | null>(null);
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
 
   const songs = config.songs || [];
+
+  // Automatically pause background music when mixtape plays & reset when unmounted/stopped
+  useEffect(() => {
+    if (phase === 'playing' || phase === 'spinning') {
+      setAppPlayingMedia(true);
+    } else {
+      setAppPlayingMedia(false);
+    }
+    return () => {
+      setAppPlayingMedia(false);
+    };
+  }, [phase, setAppPlayingMedia]);
 
   const handleNextSong = () => {
     if (songs.length === 0) return;

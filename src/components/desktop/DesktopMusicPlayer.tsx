@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDesktopStore } from '@/stores/desktopStore';
 
 interface MusicPlayerProps {
   config?: {
@@ -15,6 +16,7 @@ interface MusicPlayerProps {
 }
 
 export default function DesktopMusicPlayer({ config }: MusicPlayerProps) {
+  const { isAppPlayingMedia } = useDesktopStore();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [needsInteraction, setNeedsInteraction] = useState(false);
@@ -92,6 +94,15 @@ export default function DesktopMusicPlayer({ config }: MusicPlayerProps) {
       audioRef.current = null;
     };
   }, [enabled, url, start, end, loop]);
+
+  // Automatically pause background music when an app plays audio/video
+  useEffect(() => {
+    if (!audioRef.current || !enabled) return;
+    if (isAppPlayingMedia) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, [isAppPlayingMedia, enabled]);
 
   // Handle interaction to play after autoplay block
   const handleStartPlay = () => {

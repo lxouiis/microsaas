@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { PhotosConfig, PhotoAlbumPage, PhotoItem } from '@/lib/types';
+import { useDesktopStore } from '@/stores/desktopStore';
 
 interface PhotosAppProps {
   config: PhotosConfig;
@@ -381,6 +382,18 @@ export default function PhotosApp({ config }: PhotosAppProps) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { setAppPlayingMedia } = useDesktopStore();
+
+  useEffect(() => {
+    if (isPlayingMusic) {
+      setAppPlayingMedia(true);
+    } else {
+      setAppPlayingMedia(false);
+    }
+    return () => {
+      setAppPlayingMedia(false);
+    };
+  }, [isPlayingMusic, setAppPlayingMedia]);
 
   const palKey = config.palette || 'sage';
   const palette = PALETTES[palKey] || PALETTES.sage;
