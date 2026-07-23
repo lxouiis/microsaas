@@ -258,7 +258,7 @@ export default function HomePage() {
         position: 'relative',
         zIndex: 2,
       }}>
-        {['📧 Love Letters', '🎰 Gacha Machine', '🎵 Mixtape', '🎟 Invitations', '⭐ Mini Games', '📸 Photo Album', '📅 Calendar', '🔒 Secrets'].map((feat) => (
+        {['📧 Letters', '🎰 Gacha Machine', '🎵 Mixtape', '🎟 Invitations', '⭐ Mini Games', '📸 Photo Album', '📅 Calendar', '🔒 Secrets'].map((feat) => (
           <div key={feat} style={{
             background: 'rgba(255,255,255,0.15)',
             backdropFilter: 'blur(8px)',

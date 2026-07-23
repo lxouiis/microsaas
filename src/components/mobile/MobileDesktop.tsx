@@ -429,7 +429,7 @@ export default function MobileDesktop({ config }: MobileDesktopProps) {
                   <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                     <span style={{ fontSize: 18 }}>👆</span>
                     <div>
-                      <strong>Tap / Double-Tap Icons</strong> to open Love Letters, Gacha Machine, Mixtape, Photos & secrets!
+                      <strong>Tap / Double-Tap Icons</strong> to open Letters, Gacha Machine, Mixtape, Photos & secrets!
                     </div>
                   </div>
 

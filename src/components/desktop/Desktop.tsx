@@ -386,7 +386,7 @@ export default function Desktop({ config }: DesktopProps) {
                   <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                     <span style={{ fontSize: 20 }}>🖱️</span>
                     <div>
-                      <strong>Click / Double-Click Icons</strong> on the desktop to open Love Letters, Gacha Machine, Mixtape, Photos & secrets!
+                      <strong>Click / Double-Click Icons</strong> on the desktop to open Letters, Gacha Machine, Mixtape, Photos & secrets!
                     </div>
                   </div>
 
