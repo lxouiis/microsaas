@@ -310,7 +310,7 @@ export default function MixtapeCreator({ config, onChange }: MixtapeCreatorProps
 
   const addSong = () => {
     sounds.click();
-    const songs = [...(config.songs || []), { title: '', artist: '' }];
+    const songs = [...(config.songs || []), { title: '', artist: '', url: '' }];
     updateConfig({ songs });
   };
 
@@ -786,38 +786,61 @@ export default function MixtapeCreator({ config, onChange }: MixtapeCreatorProps
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(config.songs || []).map((song: any, i: number) => (
-                <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, color: '#999', fontFamily: 'var(--font-pixel)', minWidth: 16 }}>{String(i + 1).padStart(2, '0')}</span>
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    background: '#F8FAFC',
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: '1px solid #E2E8F0',
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: '#1F5FA6', fontWeight: 800, fontFamily: 'var(--font-pixel)', minWidth: 20 }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <input
+                      className="xp-input"
+                      value={song.title}
+                      onChange={(e) => updateSong(i, { title: e.target.value })}
+                      placeholder="Track Title"
+                      style={{ flex: 2, borderRadius: 6, padding: '4px 8px', fontSize: 12 }}
+                    />
+                    <input
+                      className="xp-input"
+                      value={song.artist}
+                      onChange={(e) => updateSong(i, { artist: e.target.value })}
+                      placeholder="Artist"
+                      style={{ flex: 1, borderRadius: 6, padding: '4px 8px', fontSize: 12 }}
+                    />
+                    <button
+                      onClick={() => removeSong(i)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#EF4444',
+                        cursor: 'pointer',
+                        fontSize: 16,
+                        fontWeight: 'bold',
+                        padding: '0 4px',
+                      }}
+                      title="Remove Track"
+                    >
+                      ×
+                    </button>
+                  </div>
                   <input
                     className="xp-input"
-                    value={song.title}
-                    onChange={(e) => updateSong(i, { title: e.target.value })}
-                    placeholder="Track Title"
-                    style={{ flex: 2, borderRadius: 6, padding: '4px 8px', fontSize: 12 }}
+                    value={song.url || ''}
+                    onChange={(e) => updateSong(i, { url: e.target.value })}
+                    placeholder="🎵 Song Link (Spotify track, YouTube video, or MP3 URL)"
+                    style={{ borderRadius: 6, padding: '4px 8px', fontSize: 11, background: '#FFFFFF' }}
                   />
-                  <input
-                    className="xp-input"
-                    value={song.artist}
-                    onChange={(e) => updateSong(i, { artist: e.target.value })}
-                    placeholder="Artist"
-                    style={{ flex: 1, borderRadius: 6, padding: '4px 8px', fontSize: 12 }}
-                  />
-                  <button
-                    onClick={() => removeSong(i)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#EF4444',
-                      cursor: 'pointer',
-                      fontSize: 14,
-                      fontWeight: 'bold',
-                    }}
-                    title="Remove Track"
-                  >
-                    ×
-                  </button>
                 </div>
               ))}
             </div>

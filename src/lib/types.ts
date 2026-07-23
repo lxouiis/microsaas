@@ -48,12 +48,18 @@ export interface GachaConfig {
   capsules: GachaCapsule[];
 }
 
+export interface MixtapeSong {
+  title: string;
+  artist: string;
+  url?: string;
+}
+
 export interface MixtapeConfig {
   title: string;
   personalNote: string;
   spotifyUrl?: string;
   youtubeUrl?: string;
-  songs: { title: string; artist: string }[];
+  songs: MixtapeSong[];
 }
 
 export interface TicketConfig {

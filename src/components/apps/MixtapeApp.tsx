@@ -225,6 +225,26 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
   const [phase, setPhase] = useState<'case' | 'door-open' | 'inserting' | 'locking' | 'spinning' | 'playing'>('case');
   const [isPlaying, setIsPlaying] = useState(false);
   const [tapeHiss, setTapeHiss] = useState<{ stop: () => void } | null>(null);
+  const [currentSongIndex, setCurrentSongIndex] = useState(0);
+
+  const songs = config.songs || [];
+
+  const handleNextSong = () => {
+    if (songs.length === 0) return;
+    sounds.click();
+    setCurrentSongIndex((prev) => (prev + 1) % songs.length);
+  };
+
+  const handlePrevSong = () => {
+    if (songs.length === 0) return;
+    sounds.click();
+    setCurrentSongIndex((prev) => (prev - 1 + songs.length) % songs.length);
+  };
+
+  const playSongIndex = (idx: number) => {
+    sounds.click();
+    setCurrentSongIndex(idx);
+  };
 
   const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -306,6 +326,11 @@ function getYouTubeEmbedUrl(url?: string): string | null {
     return `https://www.youtube.com/embed/${videoMatch[1]}`;
   }
   return null;
+}
+
+function isDirectAudioUrl(url?: string): boolean {
+  if (!url) return false;
+  return Boolean(url.match(/\.(mp3|wav|ogg|m4a)(\?.*)?$/i) || url.startsWith('data:audio'));
 }
 
   const cassetteStyle = (config as any).cassette_style || {};
@@ -597,76 +622,152 @@ function getYouTubeEmbedUrl(url?: string): string | null {
               </div>
             </div>
 
-            {/* Track listing */}
+            {/* Queue Control & Track listing */}
             {config.songs && config.songs.length > 0 && (
-              <div style={{ background: 'white', borderRadius: 8, padding: '12px 16px', marginBottom: 12, boxShadow: '2px 2px 8px rgba(0,0,0,0.08)' }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#888', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
-                  🎵 Tracklist
+              <div style={{ background: 'white', borderRadius: 12, padding: '14px 16px', marginBottom: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#1E293B', letterSpacing: 1, textTransform: 'uppercase' }}>
+                    🎵 Tracklist ({config.songs.length})
+                  </div>
+                  {config.songs.length > 1 && (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={handlePrevSong}
+                        style={{
+                          background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 6,
+                          padding: '3px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                        }}
+                      >
+                        ⏮ Prev
+                      </button>
+                      <button
+                        onClick={handleNextSong}
+                        style={{
+                          background: '#1F5FA6', color: 'white', border: 'none', borderRadius: 6,
+                          padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                        }}
+                      >
+                        Next ⏭
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {config.songs.map((song, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 + i * 0.1 }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '5px 0',
-                      borderBottom: i < config.songs.length - 1 ? '1px solid #F0F0F0' : 'none',
-                    }}
-                  >
-                    <span style={{ fontSize: 11, color: '#AAA', minWidth: 16, fontFamily: 'var(--font-pixel)' }}>
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <span style={{ fontSize: 12, flex: 1, fontWeight: 600, color: '#2A2A2A' }}>{song.title}</span>
-                    <span style={{ fontSize: 11, color: '#888' }}>{song.artist}</span>
-                  </motion.div>
-                ))}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {config.songs.map((song, i) => {
+                    const isSelected = i === currentSongIndex;
+                    return (
+                      <motion.div
+                        key={i}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        onClick={() => playSongIndex(i)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '8px 10px',
+                          borderRadius: 8,
+                          background: isSelected ? '#EFF6FF' : '#F8FAFC',
+                          border: isSelected ? '1.5px solid #3B82F6' : '1px solid #F1F5F9',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <span style={{ fontSize: 11, color: isSelected ? '#2563EB' : '#94A3B8', minWidth: 20, fontWeight: 800, fontFamily: 'var(--font-pixel)' }}>
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: isSelected ? 800 : 600, color: isSelected ? '#1E3A8A' : '#1E293B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {song.title || `Track ${i + 1}`}
+                          </div>
+                          {song.artist && (
+                            <div style={{ fontSize: 11, color: isSelected ? '#3B82F6' : '#64748B' }}>
+                              {song.artist}
+                            </div>
+                          )}
+                        </div>
+                        {isSelected && (
+                          <span style={{ fontSize: 10, fontWeight: 800, background: '#3B82F6', color: 'white', padding: '2px 8px', borderRadius: 10 }}>
+                            ▶ PLAYING
+                          </span>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* Spotify embed */}
-            {getSpotifyEmbedUrl(config.spotifyUrl) && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                transition={{ duration: 0.4 }}
-                style={{ marginTop: 12 }}
-              >
-                <iframe
-                  src={getSpotifyEmbedUrl(config.spotifyUrl)!}
-                  width="100%"
-                  height="152"
-                  frameBorder="0"
-                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  loading="lazy"
-                  style={{ borderRadius: 12, border: 'none' }}
-                />
-              </motion.div>
-            )}
+            {/* Active Song / Embedded Player */}
+            {(() => {
+              const activeSong = config.songs?.[currentSongIndex];
+              const activeUrl = activeSong?.url || config.spotifyUrl || config.youtubeUrl;
+              const spotifyEmbed = getSpotifyEmbedUrl(activeUrl) || getSpotifyEmbedUrl(config.spotifyUrl);
+              const ytEmbed = getYouTubeEmbedUrl(activeUrl) || getYouTubeEmbedUrl(config.youtubeUrl);
+              const isDirectAudio = isDirectAudioUrl(activeUrl);
 
-            {/* YouTube embed */}
-            {getYouTubeEmbedUrl(config.youtubeUrl) && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                transition={{ duration: 0.4 }}
-                style={{ marginTop: 12 }}
-              >
-                <iframe
-                  src={getYouTubeEmbedUrl(config.youtubeUrl)!}
-                  width="100%"
-                  height="180"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  loading="lazy"
-                  style={{ borderRadius: 12, border: 'none' }}
-                />
-              </motion.div>
-            )}
+              if (spotifyEmbed) {
+                return (
+                  <motion.div
+                    key={`spotify-${currentSongIndex}`}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ marginTop: 12 }}
+                  >
+                    <iframe
+                      src={spotifyEmbed}
+                      width="100%"
+                      height="152"
+                      frameBorder="0"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                      style={{ borderRadius: 12, border: 'none' }}
+                    />
+                  </motion.div>
+                );
+              }
+
+              if (ytEmbed) {
+                return (
+                  <motion.div
+                    key={`yt-${currentSongIndex}`}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ marginTop: 12 }}
+                  >
+                    <iframe
+                      src={ytEmbed}
+                      width="100%"
+                      height="180"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      loading="lazy"
+                      style={{ borderRadius: 12, border: 'none' }}
+                    />
+                  </motion.div>
+                );
+              }
+
+              if (isDirectAudio) {
+                return (
+                  <motion.div
+                    key={`audio-${currentSongIndex}`}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ marginTop: 12, background: 'white', borderRadius: 12, padding: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
+                  >
+                    <audio src={activeUrl} controls autoPlay style={{ width: '100%' }} />
+                  </motion.div>
+                );
+              }
+
+              return null;
+            })()}
           </motion.div>
         )}
       </AnimatePresence>
