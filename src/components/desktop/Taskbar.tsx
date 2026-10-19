@@ -1,10 +1,12 @@
 'use client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRef } from 'react';
 import Clock from './Clock';
 import { useWindowStore } from '@/stores/windowStore';
 import { useDesktopStore } from '@/stores/desktopStore';
 import { useSound } from '@/hooks/useSound';
+import { useFullscreen } from '@/hooks/useFullscreen';
 
 interface TaskbarProps {
   onStartClick: () => void;
@@ -16,6 +18,8 @@ export default function Taskbar({ onStartClick, isStartMenuOpen }: TaskbarProps)
   const { soundEnabled, toggleSound } = useDesktopStore();
   const sounds = useSound();
   const openWindows = windows.filter((w) => w.isOpen);
+  const fsTargetRef = useRef<HTMLElement | null>(null);
+  const { isFullscreen, toggle: toggleFullscreen } = useFullscreen(fsTargetRef);
 
   const handleWindowClick = (id: string, isMinimized: boolean) => {
     sounds.click();
@@ -65,6 +69,20 @@ export default function Taskbar({ onStartClick, isStartMenuOpen }: TaskbarProps)
       </div>
 
       <div className="taskbar-separator" />
+
+      {/* Fullscreen toggle */}
+      <motion.button
+        className="sound-toggle"
+        onClick={() => {
+          sounds.click();
+          toggleFullscreen();
+        }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+      >
+        {isFullscreen ? '⤡' : '⤢'}
+      </motion.button>
 
       {/* Sound toggle */}
       <motion.button

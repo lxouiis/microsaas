@@ -128,14 +128,22 @@ export default function Desktop({ config }: DesktopProps) {
 
       {/* Desktop area (above taskbar) */}
       <div className="absolute inset-0" style={{ bottom: 40, overflow: 'hidden' }}>
-        {/* Desktop icons grouped in side-by-side columns */}
+        {/* Desktop icons grouped in side-by-side columns — scrollable so short
+            viewports (phone landscape) can still reach every icon instead of
+            having the taskbar clip the bottom of the column with no way to
+            get to it. */}
         <div
           style={{
             position: 'absolute',
             top: 16,
             left: 12,
+            right: 12,
+            bottom: 8,
             display: 'flex',
             gap: 12,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           {/* Column 1: Mail, Gacha, Mixtape, Ticket, Game, Photos, Recycle Bin */}

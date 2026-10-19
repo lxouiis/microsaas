@@ -24,6 +24,17 @@
 .DS_Store
 *.pem
 
+# macOS AppleDouble resource-fork files (common on network/external volumes)
+._*
+.!*
+
+# reference repos cloned alongside this project — not part of the app
+/Flowers
+/happyBirthday
+
+# local Claude Code settings
+/.claude
+
 # debug
 npm-debug.log*
 yarn-debug.log*
