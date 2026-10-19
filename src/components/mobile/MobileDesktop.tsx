@@ -5,6 +5,7 @@ import type { DesktopConfig } from '@/lib/types';
 import Desktop from '@/components/desktop/Desktop';
 import BootSequence from '@/components/boot/BootSequence';
 import MobilePortraitHome from './MobilePortraitHome';
+import { useFullscreen } from '@/hooks/useFullscreen';
 import Link from 'next/link';
 
 interface MobileDesktopProps {
@@ -17,6 +18,8 @@ export default function MobileDesktop({ config }: MobileDesktopProps) {
   const [isLandscape, setIsLandscape] = useState(false);
   const [zoomMode, setZoomMode] = useState<'fit' | 'readable'>('readable');
   const containerRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, toggle: toggleFullscreen } = useFullscreen(pageRef);
 
   // Detect orientation
   useEffect(() => {
@@ -117,6 +120,7 @@ export default function MobileDesktop({ config }: MobileDesktopProps) {
 
   return (
     <div
+      ref={pageRef}
       style={{
         minHeight: '100dvh',
         width: '100%',
@@ -302,6 +306,26 @@ export default function MobileDesktop({ config }: MobileDesktopProps) {
                   {zoomMode === 'readable' ? '🔍 Fit' : '🔍 Large'}
                 </button>
               )}
+
+              <button
+                onClick={toggleFullscreen}
+                style={{
+                  background:
+                    'linear-gradient(180deg,#E8E8E4 0%,#C0C0B8 100%)',
+                  border: '1.5px solid',
+                  borderColor: '#FFF #6A6A64 #6A6A64 #FFF',
+                  borderRadius: 3,
+                  padding: '2px 6px',
+                  fontSize: 9,
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  color: '#333',
+                  cursor: 'pointer',
+                }}
+                title="Toggle Fullscreen"
+              >
+                {isFullscreen ? '⤡ Exit' : '⤢ Full'}
+              </button>
 
               <button
                 onClick={() => setShowGuide(true)}
