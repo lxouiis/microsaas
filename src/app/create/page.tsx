@@ -26,6 +26,7 @@ export default function CreatePage() {
   const [published, setPublished] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   const updateConfig = (updates: Partial<DesktopConfig>) => {
     setConfig((prev) => ({ ...prev, ...updates }));
@@ -48,21 +49,46 @@ export default function CreatePage() {
     }));
   };
 
+  // Vercel's API routes reject request bodies over ~4.5MB by default, and
+  // localStorage caps out around 5-10MB per origin — both get blown past
+  // silently once a couple of uploaded videos/photos are base64-inlined
+  // into config. This guard catches it BEFORE attempting to save, with an
+  // actual message, instead of a silent QuotaExceededError that looked like
+  // the Publish button just did nothing.
+  const MAX_PUBLISH_BYTES = 4 * 1024 * 1024; // 4MB, safely under both limits
+
   const handlePublish = async () => {
+    setPublishError(null);
     setPublishing(true);
     try {
       const generatedSlug = slug || `${(config.recipientName || 'friend').toLowerCase().replace(/\s+/g, '-')}-${Date.now().toString(36)}`;
-      setSlug(generatedSlug);
-      
       const savedConfig = { ...config, slug: generatedSlug };
-      
-      // 1. Always save locally first (instant fallback)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`desktop_${generatedSlug}`, JSON.stringify(savedConfig));
-        localStorage.setItem('desktop_latest', JSON.stringify(savedConfig));
+      const serialized = JSON.stringify(savedConfig);
+      const sizeBytes = new Blob([serialized]).size;
+
+      if (sizeBytes > MAX_PUBLISH_BYTES) {
+        setPublishError(
+          `This gift is too large to publish (${(sizeBytes / (1024 * 1024)).toFixed(1)}MB, max ${MAX_PUBLISH_BYTES / (1024 * 1024)}MB). ` +
+          `Uploaded photos/videos are the usual culprit — try removing one or using a YouTube/Spotify link instead of an uploaded file for Mixtape tracks.`
+        );
+        setPublishing(false);
+        return;
       }
-      
+
+      setSlug(generatedSlug);
+
+      // 1. Save locally first (instant fallback for the creator's own browser)
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`desktop_${generatedSlug}`, serialized);
+          localStorage.setItem('desktop_latest', serialized);
+        }
+      } catch (localErr) {
+        console.warn('localStorage save failed (continuing to Supabase):', localErr);
+      }
+
       // 2. Save to Supabase via API route (more reliable than Server Actions for large payloads)
+      let supabaseOk = false;
       try {
         const res = await fetch('/api/save-desktop', {
           method: 'POST',
@@ -73,16 +99,23 @@ export default function CreatePage() {
         if (!result.success) {
           console.error('Supabase save failed:', result.error);
         } else {
+          supabaseOk = true;
           console.log('✅ Saved to Supabase:', generatedSlug);
         }
       } catch (saveErr) {
-        console.warn('Supabase save error (continuing with local):', saveErr);
+        console.warn('Supabase save error:', saveErr);
+      }
+
+      if (!supabaseOk) {
+        setPublishError(
+          'Saved on this device, but the shareable link may not work for other people yet — the database save failed (Supabase may be unreachable). You can still preview it yourself.'
+        );
       }
 
       setPublished(true);
     } catch (err) {
-      console.warn('Publish error:', err);
-      setPublished(true);
+      console.error('Publish error:', err);
+      setPublishError(err instanceof Error ? err.message : 'Something went wrong while publishing. Please try again.');
     } finally {
       setPublishing(false);
     }
@@ -188,6 +221,36 @@ export default function CreatePage() {
           </button>
         </div>
       </div>
+
+      {/* Publish error banner */}
+      <AnimatePresence>
+        {publishError && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{
+              background: '#FEF2F2',
+              borderBottom: '2px solid #FCA5A5',
+              padding: '10px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              overflow: 'hidden',
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ fontSize: 16 }}>⚠️</span>
+            <span style={{ fontSize: 12, color: '#991B1B', flex: 1, lineHeight: 1.5 }}>{publishError}</span>
+            <button
+              onClick={() => setPublishError(null)}
+              style={{ background: 'none', border: 'none', color: '#991B1B', cursor: 'pointer', fontSize: 14, fontWeight: 700, padding: '0 4px' }}
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div style={{ display: 'flex', flex: 1, height: 'calc(100vh - 52px)', overflow: 'hidden' }}>
         {/* Left: tabs + form */}
@@ -332,7 +395,7 @@ export default function CreatePage() {
                   >
                     <span style={{ fontSize: 24 }}>🖼️</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: '#1F5FA6', marginTop: 4 }}>Upload Photo or Video</span>
-                    <span style={{ fontSize: 10, color: '#888', marginTop: 2 }}>JPG, PNG, or MP4 — under 15MB</span>
+                    <span style={{ fontSize: 10, color: '#888', marginTop: 2 }}>JPG/PNG under 1.5MB, MP4 under 1MB — your whole gift has a 4MB budget</span>
                     <input
                       type="file"
                       accept="image/*,video/mp4,video/webm"
@@ -340,11 +403,12 @@ export default function CreatePage() {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        if (file.size > 15 * 1024 * 1024) {
-                          alert('Please choose a file smaller than 15MB for optimal loading speed.');
+                        const isVideo = file.type.startsWith('video/');
+                        const cap = isVideo ? 1 * 1024 * 1024 : 1.5 * 1024 * 1024;
+                        if (file.size > cap) {
+                          alert(`Please choose a ${isVideo ? 'video' : 'photo'} smaller than ${isVideo ? '1MB' : '1.5MB'} — your whole gift (all photos/videos combined) has a 4MB publish limit.`);
                           return;
                         }
-                        const isVideo = file.type.startsWith('video/');
                         const reader = new FileReader();
                         reader.onload = (evt) => {
                           const dataUrl = evt.target?.result as string;
@@ -889,7 +953,7 @@ export default function CreatePage() {
                   >
                     <span style={{ fontSize: 24 }}>🎵</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: '#1F5FA6', marginTop: 4 }}>Upload MP4</span>
-                    <span style={{ fontSize: 10, color: '#888', marginTop: 2 }}>Under 15MB</span>
+                    <span style={{ fontSize: 10, color: '#888', marginTop: 2 }}>Under 1MB — your whole gift has a 4MB budget</span>
                     <input
                       type="file"
                       accept="video/mp4,video/webm"
@@ -897,8 +961,8 @@ export default function CreatePage() {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        if (file.size > 15 * 1024 * 1024) {
-                          alert('Please choose a file smaller than 15MB for optimal loading speed.');
+                        if (file.size > 1 * 1024 * 1024) {
+                          alert('Please choose a video smaller than 1MB — your whole gift (all photos/videos combined) has a 4MB publish limit.');
                           return;
                         }
                         const reader = new FileReader();
@@ -1054,6 +1118,7 @@ export default function CreatePage() {
                     {/* File upload option */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>Or Upload Custom Audio/Video (MP3/MP4)</span>
+                      <span style={{ fontSize: 10, color: '#888' }}>Under 1.5MB — your whole gift has a 4MB publish budget. Prefer a preset track above when possible.</span>
                       <input
                         type="file"
                         accept="audio/*,video/mp4"
@@ -1061,8 +1126,8 @@ export default function CreatePage() {
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            if (file.size > 15 * 1024 * 1024) {
-                              alert('Please choose a file smaller than 15MB for optimal loading speed.');
+                            if (file.size > 1.5 * 1024 * 1024) {
+                              alert('Please choose a file smaller than 1.5MB — your whole gift (all photos/videos combined) has a 4MB publish limit.');
                               return;
                             }
                             const reader = new FileReader();

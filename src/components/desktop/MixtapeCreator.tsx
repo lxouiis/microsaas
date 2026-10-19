@@ -846,7 +846,7 @@ export default function MixtapeCreator({ config, onChange }: MixtapeCreatorProps
                       style={{ flex: 1, borderRadius: 6, padding: '4px 8px', fontSize: 11, background: '#FFFFFF' }}
                     />
                     <label
-                      title="Upload MP4/MP3/video file — plays directly, no YouTube needed"
+                      title="Upload MP4/MP3/video file (under 800KB) — plays directly, no YouTube needed. Only plays 90s anyway, so a short clip works best."
                       style={{
                         flexShrink: 0,
                         fontSize: 10, fontWeight: 700, color: '#1F5FA6',
@@ -862,8 +862,8 @@ export default function MixtapeCreator({ config, onChange }: MixtapeCreatorProps
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
-                          if (file.size > 20 * 1024 * 1024) {
-                            alert('Please choose a file smaller than 20MB — large files slow down the whole gift.');
+                          if (file.size > 800 * 1024) {
+                            alert('Please choose a file smaller than 800KB per track — each track only plays 90s anyway, and the whole gift (all tracks + photos combined) has a 4MB publish limit. A short trimmed clip works best.');
                             return;
                           }
                           const reader = new FileReader();
