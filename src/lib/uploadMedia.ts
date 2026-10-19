@@ -16,7 +16,11 @@ export async function uploadMedia(file: File): Promise<string> {
   });
 
   if (error) {
-    throw new Error(`Upload failed: ${error.message}. Make sure the "${BUCKET}" bucket exists and is public in your Supabase project.`);
+    const isRlsError = /row-level security/i.test(error.message);
+    const hint = isRlsError
+      ? `the "${BUCKET}" bucket needs an INSERT policy on storage.objects — "Public bucket" alone only allows reads, not uploads. See SUPABASE_STORAGE_SETUP.md.`
+      : `make sure the "${BUCKET}" bucket exists in your Supabase project.`;
+    throw new Error(`Upload failed: ${error.message} — ${hint}`);
   }
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);

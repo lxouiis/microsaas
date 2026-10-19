@@ -9,15 +9,34 @@ base64-inlined into the gift's config. One bucket needs to exist first.
 1. Open your Supabase project dashboard → **Storage** (left sidebar)
 2. Click **New bucket**
 3. Name it exactly: `gift-media`
-4. Toggle **Public bucket** → **ON** (the app reads these files directly via
-   public URL — no auth, same model as the `desktops` table's public reads)
+4. Toggle **Public bucket** → **ON**
 5. Click **Create bucket**
 
-That's it — no RLS policies needed for the bucket itself when "Public
-bucket" is on; Supabase handles public read access automatically. Uploads
-still go through the browser using your `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-(already configured if you followed the main Supabase setup), so no new env
-vars are needed either.
+**Important — the "Public bucket" toggle only covers reads.** Storage
+access is RLS-gated on the `storage.objects` table regardless of the
+bucket's public flag, so uploads (INSERT) still need an explicit policy or
+every upload fails with *"new row violates row-level security policy"*.
+Run this once in the SQL Editor:
+
+```sql
+-- Allow anyone (the anon key) to upload into the gift-media bucket
+CREATE POLICY "Allow public uploads to gift-media"
+ON storage.objects
+FOR INSERT
+TO public
+WITH CHECK (bucket_id = 'gift-media');
+
+-- Allow anyone to read files from it (should already exist from the
+-- "Public bucket" toggle, but this makes it explicit/idempotent)
+CREATE POLICY "Allow public reads from gift-media"
+ON storage.objects
+FOR SELECT
+TO public
+USING (bucket_id = 'gift-media');
+```
+
+No new env vars needed — uploads go through the browser using your
+existing `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
 ## Why this exists
 
