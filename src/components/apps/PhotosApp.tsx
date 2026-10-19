@@ -77,6 +77,15 @@ function StickerBadge({ type = 'none' }: { type?: PhotoItem['sticker'] }) {
 }
 
 // ── Filters for Photo ─────────────────────────────────────────────────────
+const FILTER_ORDER: NonNullable<PhotoItem['filter']>[] = ['normal', 'vintage', 'grain', 'glow', 'bw'];
+const FILTER_LABELS: Record<NonNullable<PhotoItem['filter']>, string> = {
+  normal: 'Normal',
+  vintage: 'Vintage',
+  grain: 'Grain',
+  glow: 'Glow',
+  bw: 'B&W',
+};
+
 function getFilterStyle(filter?: PhotoItem['filter']): React.CSSProperties {
   switch (filter) {
     case 'vintage': return { filter: 'sepia(0.35) contrast(1.08) saturate(1.1)' };
@@ -115,10 +124,28 @@ function ConfettiParticle({ delay }: { delay: number }) {
 }
 
 // ── Single Polaroid Flip Card ──────────────────────────────────────────────
-function PolaroidCard({ photo, accentColor }: { photo: PhotoItem; accentColor: string }) {
+function PolaroidCard({
+  photo,
+  accentColor,
+  editing = false,
+  onFilterChange,
+}: {
+  photo: PhotoItem;
+  accentColor: string;
+  editing?: boolean;
+  onFilterChange?: (filter: NonNullable<PhotoItem['filter']>) => void;
+}) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const activeFilter = photo.filter || 'normal';
+
+  const cycleFilter = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const idx = FILTER_ORDER.indexOf(activeFilter);
+    const next = FILTER_ORDER[(idx + 1) % FILTER_ORDER.length];
+    onFilterChange?.(next);
+  };
 
   const toggleAudio = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -190,9 +217,35 @@ function PolaroidCard({ photo, accentColor }: { photo: PhotoItem; accentColor: s
                 ...getFilterStyle(photo.filter),
               }}
               onError={(e) => {
-                (e.target as HTMLImageElement).src = `https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=500&q=80`;
+                (e.target as HTMLImageElement).src = `https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=500&q=80`;
               }}
             />
+
+            {/* Live filter preview control (editing mode only) */}
+            {editing && (
+              <button
+                onClick={cycleFilter}
+                title="Click to cycle photo filter"
+                style={{
+                  position: 'absolute',
+                  bottom: 6,
+                  right: 6,
+                  background: 'rgba(0,0,0,0.65)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 14,
+                  padding: '4px 10px',
+                  fontSize: 10,
+                  fontFamily: 'sans-serif',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  letterSpacing: 0.3,
+                  zIndex: 15,
+                }}
+              >
+                🎨 {FILTER_LABELS[activeFilter]}
+              </button>
+            )}
           </div>
 
           {/* Handwritten Caption */}
@@ -366,7 +419,7 @@ export default function PhotosApp({ config }: PhotosAppProps) {
         photos: [
           {
             id: 'demo-1',
-            url: 'https://images.unsplash.com/photo-1516912481808-3406841bd33c?w=600&q=80',
+            url: 'https://images.unsplash.com/photo-1495616811223-4d98c6e9c869?w=600&q=80',
             caption: 'Golden hour magic ✨',
             date: 'Oct 14, 2024',
             location: 'Sunset Point',
@@ -381,8 +434,48 @@ export default function PhotosApp({ config }: PhotosAppProps) {
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [localPages, setLocalPages] = useState<PhotoAlbumPage[]>(pages);
+  const [paletteOverride, setPaletteOverride] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { setAppPlayingMedia } = useDesktopStore();
+
+  // Keep local editable copy in sync if the source config changes
+  useEffect(() => {
+    setLocalPages(pages);
+  }, [pages]);
+
+  const updatePhotoFilter = useCallback((pageIdx: number, photoIdx: number, filter: NonNullable<PhotoItem['filter']>) => {
+    setLocalPages((prev) => {
+      const next = prev.map((pg) => ({ ...pg, photos: [...pg.photos] }));
+      const page = next[pageIdx];
+      if (!page || !page.photos[photoIdx]) return prev;
+      page.photos[photoIdx] = { ...page.photos[photoIdx], filter };
+      return next;
+    });
+  }, []);
+
+  const updatePageLayout = useCallback((pageIdx: number, layout: PhotoAlbumPage['layout']) => {
+    setLocalPages((prev) => prev.map((pg, i) => (i === pageIdx ? { ...pg, layout } : pg)));
+  }, []);
+
+  const addPage = useCallback(() => {
+    setLocalPages((prev) => [
+      ...prev,
+      {
+        id: `page-${Date.now()}`,
+        title: 'New Memory',
+        layout: 'single',
+        photos: [
+          {
+            id: `photo-${Date.now()}`,
+            url: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&q=80',
+            caption: 'A new memory…',
+          },
+        ],
+      },
+    ]);
+    setCurrentPageIndex(localPages.length);
+  }, [localPages.length]);
 
   useEffect(() => {
     if (isPlayingMusic) {
@@ -395,20 +488,20 @@ export default function PhotosApp({ config }: PhotosAppProps) {
     };
   }, [isPlayingMusic, setAppPlayingMedia]);
 
-  const palKey = config.palette || 'sage';
+  const palKey = paletteOverride || config.palette || 'sage';
   const palette = PALETTES[palKey] || PALETTES.sage;
   const albumTitle = config.albumTitle || 'Our Memory Scrapbook 📖';
 
-  const currentPage = pages[currentPageIndex] || pages[0];
+  const currentPage = localPages[currentPageIndex] || localPages[0];
 
   // Confetti on last page
   useEffect(() => {
-    if (currentPageIndex === pages.length - 1 && pages.length > 1) {
+    if (currentPageIndex === localPages.length - 1 && localPages.length > 1) {
       setShowConfetti(true);
       const timer = setTimeout(() => setShowConfetti(false), 2500);
       return () => clearTimeout(timer);
     }
-  }, [currentPageIndex, pages.length]);
+  }, [currentPageIndex, localPages.length]);
 
   const toggleMusic = () => {
     if (!audioRef.current || !config.musicUrl) return;
@@ -421,7 +514,7 @@ export default function PhotosApp({ config }: PhotosAppProps) {
     }
   };
 
-  const nextPage = () => setCurrentPageIndex((i) => Math.min(pages.length - 1, i + 1));
+  const nextPage = () => setCurrentPageIndex((i) => Math.min(localPages.length - 1, i + 1));
   const prevPage = () => setCurrentPageIndex((i) => Math.max(0, i - 1));
 
   return (
@@ -473,7 +566,7 @@ export default function PhotosApp({ config }: PhotosAppProps) {
             {albumTitle}
           </div>
           <div style={{ fontSize: 11, fontFamily: 'sans-serif', color: palette.accent, opacity: 0.8 }}>
-            {currentPage?.title || `Page ${currentPageIndex + 1} of ${pages.length}`}
+            {currentPage?.title || `Page ${currentPageIndex + 1} of ${localPages.length}`}
           </div>
         </div>
 
@@ -516,6 +609,91 @@ export default function PhotosApp({ config }: PhotosAppProps) {
           </button>
         </div>
       </div>
+
+      {/* ── Customizer Panel ──────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {isEditing && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{
+              overflow: 'hidden',
+              background: 'rgba(255,255,255,0.6)',
+              backdropFilter: 'blur(8px)',
+              borderBottom: `1px solid ${palette.bookCover}44`,
+              zIndex: 19,
+            }}
+          >
+            <div style={{ padding: '14px 24px', display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center' }}>
+              {/* Palette swatches */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 10, fontFamily: 'sans-serif', fontWeight: 700, color: palette.accent, textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Palette
+                </span>
+                {Object.entries(PALETTES).map(([key, p]) => (
+                  <button
+                    key={key}
+                    onClick={() => setPaletteOverride(key)}
+                    title={p.label}
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: '50%',
+                      background: p.bookCover,
+                      border: palKey === key ? `3px solid ${p.accent}` : '2px solid transparent',
+                      cursor: 'pointer',
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Layout switcher for current page */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 10, fontFamily: 'sans-serif', fontWeight: 700, color: palette.accent, textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Layout
+                </span>
+                {(['single', 'grid2x2', 'scrapbook', 'journal'] as const).map((lo) => (
+                  <button
+                    key={lo}
+                    onClick={() => updatePageLayout(currentPageIndex, lo)}
+                    className="album-btn"
+                    style={{
+                      background: currentPage?.layout === lo ? palette.accent : 'white',
+                      color: currentPage?.layout === lo ? 'white' : palette.accent,
+                      border: `1.5px solid ${palette.bookCover}`,
+                      borderRadius: 14,
+                      padding: '4px 10px',
+                      fontSize: 10,
+                      fontFamily: 'sans-serif',
+                    }}
+                  >
+                    {lo === 'grid2x2' ? 'Grid' : lo.charAt(0).toUpperCase() + lo.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Add page */}
+              <button
+                onClick={addPage}
+                className="album-btn"
+                style={{
+                  background: palette.accent,
+                  color: 'white',
+                  borderRadius: 16,
+                  padding: '6px 14px',
+                  fontSize: 11,
+                  fontFamily: 'sans-serif',
+                  marginLeft: 'auto',
+                }}
+              >
+                ＋ Add Page
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── 3D Album Page Canvas ──────────────────────────────────────────── */}
       <div
@@ -571,7 +749,12 @@ export default function PhotosApp({ config }: PhotosAppProps) {
                 {/* Left: Hero photo */}
                 <div>
                   {currentPage.photos[0] && (
-                    <PolaroidCard photo={currentPage.photos[0]} accentColor={palette.accent} />
+                    <PolaroidCard
+                      photo={currentPage.photos[0]}
+                      accentColor={palette.accent}
+                      editing={isEditing}
+                      onFilterChange={(f) => updatePhotoFilter(currentPageIndex, 0, f)}
+                    />
                   )}
                 </div>
                 {/* Right: Handwritten Journal Sheet */}
@@ -610,7 +793,12 @@ export default function PhotosApp({ config }: PhotosAppProps) {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
                 <div style={{ width: 'min(360px, 90%)' }}>
                   {currentPage.photos[0] && (
-                    <PolaroidCard photo={currentPage.photos[0]} accentColor={palette.accent} />
+                    <PolaroidCard
+                      photo={currentPage.photos[0]}
+                      accentColor={palette.accent}
+                      editing={isEditing}
+                      onFilterChange={(f) => updatePhotoFilter(currentPageIndex, 0, f)}
+                    />
                   )}
                 </div>
                 {currentPage.journalText && (
@@ -633,7 +821,13 @@ export default function PhotosApp({ config }: PhotosAppProps) {
             {currentPage?.layout === 'grid2x2' && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 {currentPage.photos.slice(0, 4).map((p, idx) => (
-                  <PolaroidCard key={p.id || idx} photo={p} accentColor={palette.accent} />
+                  <PolaroidCard
+                    key={p.id || idx}
+                    photo={p}
+                    accentColor={palette.accent}
+                    editing={isEditing}
+                    onFilterChange={(f) => updatePhotoFilter(currentPageIndex, idx, f)}
+                  />
                 ))}
               </div>
             )}
@@ -647,7 +841,12 @@ export default function PhotosApp({ config }: PhotosAppProps) {
                       transform: `rotate(${p.rotation || (idx % 2 === 0 ? -3 : 4)}deg)`,
                     }}
                   >
-                    <PolaroidCard photo={p} accentColor={palette.accent} />
+                    <PolaroidCard
+                      photo={p}
+                      accentColor={palette.accent}
+                      editing={isEditing}
+                      onFilterChange={(f) => updatePhotoFilter(currentPageIndex, idx, f)}
+                    />
                   </div>
                 ))}
               </div>
@@ -693,21 +892,21 @@ export default function PhotosApp({ config }: PhotosAppProps) {
           </button>
 
           <span style={{ fontSize: 12, fontFamily: 'monospace', fontWeight: 700 }}>
-            {currentPageIndex + 1} / {pages.length}
+            {currentPageIndex + 1} / {localPages.length}
           </span>
 
           <button
             className="album-btn"
             onClick={nextPage}
-            disabled={currentPageIndex === pages.length - 1}
+            disabled={currentPageIndex === localPages.length - 1}
             style={{
-              background: currentPageIndex === pages.length - 1 ? '#E2E8F0' : palette.accent,
-              color: currentPageIndex === pages.length - 1 ? '#94A3B8' : 'white',
+              background: currentPageIndex === localPages.length - 1 ? '#E2E8F0' : palette.accent,
+              color: currentPageIndex === localPages.length - 1 ? '#94A3B8' : 'white',
               padding: '6px 14px',
               borderRadius: 16,
               fontSize: 12,
               fontFamily: 'sans-serif',
-              cursor: currentPageIndex === pages.length - 1 ? 'not-allowed' : 'pointer',
+              cursor: currentPageIndex === localPages.length - 1 ? 'not-allowed' : 'pointer',
             }}
           >
             Next ▶

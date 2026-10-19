@@ -6,17 +6,17 @@
   --desktop-teal: #4EBFBF;
   --desktop-teal-dark: #3AA0A0;
   --desktop-teal-light: #7DD4D4;
-  
+
   /* XP Titlebar */
   --xp-title-start: #0A5DB5;
   --xp-title-end: #0C3FA3;
   --xp-title-inactive: #7A96C2;
-  
+
   /* Taskbar */
   --taskbar-bg: #1F5FA6;
   --taskbar-gradient-start: #3285C8;
   --taskbar-gradient-end: #1A5097;
-  
+
   /* Pastel accents */
   --pink-accent: #FFB7C5;
   --pink-soft: #FFDDE5;
@@ -25,23 +25,51 @@
   --peach: #FFD6B8;
   --cream: #FFF8F0;
   --warm-white: #FFFDF8;
-  
+
   /* UI */
   --window-bg: #ECE9D8;
   --window-border: #919B9C;
   --button-face: #ECE9D8;
   --button-shadow: #808080;
   --button-highlight: #FFFFFF;
-  
+
   /* Text */
   --text-primary: #1A1A1A;
   --text-secondary: #555555;
   --text-muted: #888888;
-  
+
   /* Fonts */
   --font-pixel: 'VT323', monospace;
   --font-body: 'Nunito', sans-serif;
   --font-hand: 'Caveat', cursive;
+
+  /* Landing Page Colors (Light Mode) */
+  --landing-bg-gradient: linear-gradient(135deg, #4EBFBF 0%, #3AA0A0 30%, #5BB8D4 60%, #4EBFBF 100%);
+  --landing-hero-text: white;
+  --landing-hero-text-shadow: rgba(0, 0, 0, 0.2);
+  --landing-button-primary-bg: white;
+  --landing-button-primary-text: #3AA0A0;
+  --landing-button-secondary-bg: rgba(255, 255, 255, 0.15);
+  --landing-button-secondary-border: rgba(255, 255, 255, 0.6);
+  --landing-button-secondary-text: white;
+  --landing-pill-bg: rgba(255, 255, 255, 0.15);
+  --landing-pill-border: rgba(255, 255, 255, 0.3);
+  --landing-pill-text: white;
+  --landing-decoration-opacity: 0.25;
+  --landing-scanline: rgba(0, 0, 0, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark mode adjustments */
+    --landing-bg-gradient: linear-gradient(135deg, #2a7878 0%, #1e5f5f 30%, #3a8fa8 60%, #2a7878 100%);
+    --landing-button-primary-bg: #1a1a1a;
+    --landing-button-primary-text: #5dd6d6;
+    --landing-button-secondary-bg: rgba(0, 0, 0, 0.3);
+    --landing-button-secondary-border: rgba(255, 255, 255, 0.2);
+    --landing-decoration-opacity: 0.15;
+    --landing-scanline: rgba(255, 255, 255, 0.02);
+  }
 }
 
 *, *::before, *::after {
@@ -701,6 +729,17 @@ html, body {
 @keyframes float-particle {
   0% { transform: translateY(0) rotate(0deg); opacity: 0.7; }
   100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .particle {

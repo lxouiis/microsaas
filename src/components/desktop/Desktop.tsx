@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWindowStore } from '@/stores/windowStore';
 import { useDesktopStore } from '@/stores/desktopStore';
@@ -13,25 +13,37 @@ import Window from './Window';
 import DesktopPet from './DesktopPet';
 import DesktopMusicPlayer from './DesktopMusicPlayer';
 
-import MailApp from '../apps/MailApp';
-import GachaApp from '../apps/GachaApp';
-import MixtapeApp from '../apps/MixtapeApp';
-import TicketApp from '../apps/TicketApp';
-import GameApp from '../apps/GameApp';
-import PhotosApp from '../apps/PhotosApp';
-import CalendarApp from '../apps/CalendarApp';
-import SecretApp from '../apps/SecretApp';
 import type { AppType } from '@/stores/windowStore';
 
 import dynamic from 'next/dynamic';
-const KittenCanvas = dynamic(() => import('../apps/KittenCanvas'), { ssr: false });
+
+// Code-split every app window — a visitor who only opens Mail shouldn't pay
+// for Photos' album renderer, the canvas game engine, or the 3D kitten scene
+// in their initial bundle. This matters most on mobile where JS parse/exec
+// cost dominates time-to-interactive.
+const loadingFallback = () => (
+  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: 13 }}>
+    Loading…
+  </div>
+);
+const MailApp = dynamic(() => import('../apps/MailApp'), { ssr: false, loading: loadingFallback });
+const GachaApp = dynamic(() => import('../apps/GachaApp'), { ssr: false, loading: loadingFallback });
+const MixtapeApp = dynamic(() => import('../apps/MixtapeApp'), { ssr: false, loading: loadingFallback });
+const TicketApp = dynamic(() => import('../apps/TicketApp'), { ssr: false, loading: loadingFallback });
+const GameApp = dynamic(() => import('../apps/GameApp'), { ssr: false, loading: loadingFallback });
+const PhotosApp = dynamic(() => import('../apps/PhotosApp'), { ssr: false, loading: loadingFallback });
+const CalendarApp = dynamic(() => import('../apps/CalendarApp'), { ssr: false, loading: loadingFallback });
+const SecretApp = dynamic(() => import('../apps/SecretApp'), { ssr: false, loading: loadingFallback });
+const KittenCanvas = dynamic(() => import('../apps/KittenCanvas'), { ssr: false, loading: loadingFallback });
 
 interface DesktopProps {
   config: DesktopConfig;
 }
 
+// Exported so the mobile portrait view (MobilePortraitHome) can render the
+// same app components full-screen instead of the scaled-down desktop canvas.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderApp(appType: AppType, config: any, fullConfig?: DesktopConfig) {
+export function renderApp(appType: AppType, config: any, fullConfig?: DesktopConfig) {
   switch (appType) {
     case 'mail': return <MailApp config={config} />;
     case 'gacha': return <GachaApp config={config} />;
@@ -65,19 +77,43 @@ export default function Desktop({ config }: DesktopProps) {
 
   const wallpaper = config.wallpaper || 'linear-gradient(135deg, #4EBFBF 0%, #3AA0A0 40%, #5BB8D4 70%, #4EBFBF 100%)';
 
+  const bgStyle = useMemo(() => {
+    if (config.wallpaperType === 'image') {
+      return {
+        backgroundImage: `url(${wallpaper})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundColor: 'transparent',
+      };
+    }
+    if (config.wallpaperType === 'video') {
+      return { backgroundColor: '#000' };
+    }
+    if (wallpaper.startsWith('linear') || wallpaper.startsWith('radial')) {
+      return { background: wallpaper };
+    }
+    return { backgroundColor: wallpaper };
+  }, [wallpaper, config.wallpaperType]);
+
   return (
     <div
       id="desktop-area"
       className="absolute inset-0 overflow-hidden"
-      style={{
-        backgroundImage: config.wallpaperType === 'image' ? `url(${wallpaper})` : (wallpaper.startsWith('linear') || wallpaper.startsWith('radial') ? wallpaper : 'none'),
-        backgroundColor: wallpaper.startsWith('linear') || wallpaper.startsWith('radial') ? 'transparent' : wallpaper,
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: 'cover',
-      }}
+      style={bgStyle}
       onClick={() => startMenuOpen && setStartMenuOpen(false)}
     >
+      {config.wallpaperType === 'video' && (
+        <video
+          src={wallpaper}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ zIndex: 0 }}
+        />
+      )}
       {/* CRT scanlines */}
       <div
         className="absolute inset-0 pointer-events-none"

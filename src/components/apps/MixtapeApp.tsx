@@ -260,6 +260,35 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
     setCurrentSongIndex(idx);
   };
 
+  // Advance to the next track without the manual click sound — used when a
+  // track finishes on its own (direct audio `onEnded`, or a YouTube video
+  // ending). Wraps back to track 1, so a tracklist loops continuously.
+  const advanceAuto = useCallback(() => {
+    setCurrentSongIndex((prev) => (songs.length ? (prev + 1) % songs.length : prev));
+  }, [songs.length]);
+
+  // YouTube's embedded player posts state-change messages once it's told to
+  // start "listening" — this is how we detect a single video ending and
+  // auto-advance to the next track, since the player has no onEnded prop.
+  const ytIframeRef = useRef<HTMLIFrameElement>(null);
+  const handleYtLoad = () => {
+    ytIframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'mixtape-yt' }), '*');
+  };
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    const handleMessage = (e: MessageEvent) => {
+      if (typeof e.data !== 'string' || !e.origin.includes('youtube.com')) return;
+      try {
+        const data = JSON.parse(e.data);
+        if (data.event === 'onStateChange' && data.info === 0) advanceAuto();
+      } catch {
+        // not a YouTube player message — ignore
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [phase, advanceAuto]);
+
   const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   // Clean up hiss audio on unmount
@@ -327,17 +356,28 @@ function getSpotifyEmbedUrl(url?: string): string | null {
   return null;
 }
 
-function getYouTubeEmbedUrl(url?: string): string | null {
+// Returns the embed URL plus whether it's a playlist (so the caller can loop
+// it continuously — "like a cassette" — via the playlist param trick, since
+// a single <iframe src> can't otherwise be told to repeat a playlist).
+function getYouTubeEmbedInfo(url?: string): { src: string; isPlaylist: boolean; videoId?: string } | null {
   if (!url) return null;
-  // Playlist
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const listMatch = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
   if (listMatch) {
-    return `https://www.youtube.com/embed/videoseries?list=${listMatch[1]}`;
+    const id = listMatch[1];
+    return {
+      src: `https://www.youtube.com/embed/videoseries?list=${id}&autoplay=1&loop=1&enablejsapi=1&origin=${encodeURIComponent(origin)}`,
+      isPlaylist: true,
+    };
   }
-  // Video (watch?v= or youtu.be/ or embed/ or music.youtube.com/watch?v=)
   const videoMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
   if (videoMatch) {
-    return `https://www.youtube.com/embed/${videoMatch[1]}`;
+    const id = videoMatch[1];
+    return {
+      src: `https://www.youtube.com/embed/${id}?autoplay=1&enablejsapi=1&origin=${encodeURIComponent(origin)}`,
+      isPlaylist: false,
+      videoId: id,
+    };
   }
   return null;
 }
@@ -718,7 +758,7 @@ function isDirectAudioUrl(url?: string): boolean {
               const activeSong = config.songs?.[currentSongIndex];
               const activeUrl = activeSong?.url || config.spotifyUrl || config.youtubeUrl;
               const spotifyEmbed = getSpotifyEmbedUrl(activeUrl) || getSpotifyEmbedUrl(config.spotifyUrl);
-              const ytEmbed = getYouTubeEmbedUrl(activeUrl) || getYouTubeEmbedUrl(config.youtubeUrl);
+              const ytInfo = getYouTubeEmbedInfo(activeUrl) || getYouTubeEmbedInfo(config.youtubeUrl);
               const isDirectAudio = isDirectAudioUrl(activeUrl);
 
               if (spotifyEmbed) {
@@ -739,11 +779,13 @@ function isDirectAudioUrl(url?: string): boolean {
                       loading="lazy"
                       style={{ borderRadius: 12, border: 'none' }}
                     />
+                    {/* Spotify's own embedded playlist player auto-advances between
+                        tracks on its own — no extra wiring needed here. */}
                   </motion.div>
                 );
               }
 
-              if (ytEmbed) {
+              if (ytInfo) {
                 return (
                   <motion.div
                     key={`yt-${currentSongIndex}`}
@@ -753,15 +795,21 @@ function isDirectAudioUrl(url?: string): boolean {
                     style={{ marginTop: 12 }}
                   >
                     <iframe
-                      src={ytEmbed}
+                      ref={ytIframeRef}
+                      src={ytInfo.src}
                       width="100%"
                       height="180"
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
-                      loading="lazy"
+                      onLoad={handleYtLoad}
                       style={{ borderRadius: 12, border: 'none' }}
                     />
+                    {!ytInfo.isPlaylist && songs.length > 1 && (
+                      <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 4, textAlign: 'center' }}>
+                        Auto-advances to the next track when this one ends
+                      </div>
+                    )}
                   </motion.div>
                 );
               }
@@ -775,7 +823,7 @@ function isDirectAudioUrl(url?: string): boolean {
                     transition={{ duration: 0.3 }}
                     style={{ marginTop: 12, background: 'white', borderRadius: 12, padding: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
                   >
-                    <audio src={activeUrl} controls autoPlay style={{ width: '100%' }} />
+                    <audio src={activeUrl} controls autoPlay onEnded={advanceAuto} style={{ width: '100%' }} />
                   </motion.div>
                 );
               }

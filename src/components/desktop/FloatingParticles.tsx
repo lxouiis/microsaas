@@ -1,6 +1,7 @@
 'use client';
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 // Seeded pseudo-random — same value on server & client, no hydration mismatch
 function seededRand(seed: number): number {
@@ -12,8 +13,11 @@ const EMOJIS = ['💗', '✨', '🌸', '⭐', '💫', '🌟', '💝', '🦋'];
 const PARTICLE_COUNT = 12;
 
 export default function FloatingParticles() {
+  const reducedMotion = useReducedMotion();
+  const count = reducedMotion ? 4 : PARTICLE_COUNT;
+
   const particles = useMemo(() =>
-    Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+    Array.from({ length: count }, (_, i) => ({
       id: i,
       x:        (i / PARTICLE_COUNT) * 100 + seededRand(i * 3) * 8,
       delay:    seededRand(i * 7) * 8,
@@ -25,7 +29,7 @@ export default function FloatingParticles() {
       driftB:   (seededRand(i * 23) - 0.5) * 80,
       repeatDel: seededRand(i * 29) * 4,
     }))
-  , []);
+  , [count]);
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 1 }}>

@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { SecretConfig } from '@/lib/types';
 import { useSound } from '@/hooks/useSound';
+import SecretCelebration from './SecretCelebration';
 
 interface SecretAppProps {
   config: SecretConfig;
@@ -185,38 +186,8 @@ export default function SecretApp({ config }: SecretAppProps) {
               </div>
             </motion.div>
 
-            {/* Content */}
-            {config.contentType === 'message' && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                style={{
-                  background: 'rgba(255,255,255,0.08)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  borderRadius: 12,
-                  padding: '20px 24px',
-                  color: 'white',
-                  lineHeight: 1.8,
-                  whiteSpace: 'pre-wrap',
-                  fontFamily: 'var(--font-hand)',
-                  fontSize: 15,
-                }}
-              >
-                {config.content}
-              </motion.div>
-            )}
-
-            {config.contentType === 'video' && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                style={{ borderRadius: 12, overflow: 'hidden' }}
-              >
-                <video src={config.content} controls style={{ width: '100%', borderRadius: 12 }} />
-              </motion.div>
-            )}
+            {/* Content: flower blooms, then a cake appears, then the song/video plays */}
+            <SecretCelebration message={config.content} videoUrl={config.celebrationVideoUrl} />
           </motion.div>
         )}
       </AnimatePresence>

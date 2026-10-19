@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { DesktopConfig } from '@/lib/types';
 import Desktop from '@/components/desktop/Desktop';
 import BootSequence from '@/components/boot/BootSequence';
+import MobilePortraitHome from './MobilePortraitHome';
 import Link from 'next/link';
 
 interface MobileDesktopProps {
@@ -90,6 +91,29 @@ export default function MobileDesktop({ config }: MobileDesktopProps) {
       window.removeEventListener('orientationchange', calc);
     };
   }, [zoomMode]);
+
+  // Portrait: the scaled-down 1280x720 monitor (below) left most of the
+  // screen empty with unreadably small icons — see the screenshot that
+  // prompted this. Landscape keeps that monitor view untouched since it
+  // actually reads fine there; portrait gets a native-feeling app-grid home
+  // screen instead, each app opening full-screen rather than scaled down.
+  if (!isLandscape) {
+    return (
+      <>
+        <AnimatePresence>
+          {!bootDone && (
+            <BootSequence
+              key="boot"
+              recipientName={config.recipientName}
+              welcomeMessage={config.welcomeMessage}
+              onComplete={handleBootComplete}
+            />
+          )}
+        </AnimatePresence>
+        {bootDone && <MobilePortraitHome config={config} />}
+      </>
+    );
+  }
 
   return (
     <div

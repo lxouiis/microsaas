@@ -13,7 +13,14 @@ import RetroMonitor from '@/components/desktop/RetroMonitor';
 import MixtapeCreator from '@/components/desktop/MixtapeCreator';
 
 export default function CreatePage() {
-  const [config, setConfig] = useState<DesktopConfig>({ ...DEMO_DESKTOP, slug: '', id: '' });
+  const [config, setConfig] = useState<DesktopConfig>({
+    ...DEMO_DESKTOP,
+    slug: '',
+    id: '',
+    // Preview shouldn't autoplay sound the moment someone lands on /create —
+    // they can turn it on themselves from the Music tab.
+    music: { ...DEMO_DESKTOP.music, enabled: false },
+  });
   const [activeTab, setActiveTab] = useState<TabType>('basic');
   const [slug, setSlug] = useState('');
   const [published, setPublished] = useState(false);
@@ -276,6 +283,77 @@ export default function CreatePage() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Custom background photo/video upload */}
+                <div style={{ borderTop: '1px solid #EEE', paddingTop: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    Custom Background
+                  </div>
+                  <div style={{ fontSize: 11, color: '#888', marginBottom: 10, lineHeight: 1.5 }}>
+                    Upload your own photo or short video to use as the desktop background instead of a preset theme.
+                  </div>
+
+                  {(config.wallpaperType === 'image' || config.wallpaperType === 'video') && (
+                    <div style={{ marginBottom: 10, borderRadius: 8, overflow: 'hidden', border: '2px solid #1F5FA6', position: 'relative', height: 90 }}>
+                      {config.wallpaperType === 'video' ? (
+                        // eslint-disable-next-line jsx-a11y/media-has-caption
+                        <video src={config.wallpaper} muted loop autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={config.wallpaper} alt="Custom wallpaper" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      )}
+                      <button
+                        onClick={() => updateConfig({ wallpaper: 'linear-gradient(135deg, #4EBFBF 0%, #3AA0A0 40%, #5BB8D4 100%)', wallpaperType: 'gradient' })}
+                        style={{
+                          position: 'absolute', top: 4, right: 4,
+                          background: 'rgba(0,0,0,0.6)', color: 'white',
+                          border: 'none', borderRadius: 12, padding: '2px 8px',
+                          fontSize: 10, cursor: 'pointer',
+                        }}
+                      >
+                        ✕ Remove
+                      </button>
+                    </div>
+                  )}
+
+                  <label
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '16px',
+                      border: '2px dashed #CBD5E1',
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      background: '#F8FAFC',
+                    }}
+                  >
+                    <span style={{ fontSize: 24 }}>🖼️</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#1F5FA6', marginTop: 4 }}>Upload Photo or Video</span>
+                    <span style={{ fontSize: 10, color: '#888', marginTop: 2 }}>JPG, PNG, or MP4 — under 15MB</span>
+                    <input
+                      type="file"
+                      accept="image/*,video/mp4,video/webm"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 15 * 1024 * 1024) {
+                          alert('Please choose a file smaller than 15MB for optimal loading speed.');
+                          return;
+                        }
+                        const isVideo = file.type.startsWith('video/');
+                        const reader = new FileReader();
+                        reader.onload = (evt) => {
+                          const dataUrl = evt.target?.result as string;
+                          updateConfig({ wallpaper: dataUrl, wallpaperType: isVideo ? 'video' : 'image' });
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
             )}
@@ -630,6 +708,52 @@ export default function CreatePage() {
                             style={{ borderRadius: 4, fontSize: 11, padding: '3px 6px' }}
                           />
                         </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <button
+                            onClick={() => {
+                              if (idx === 0) return;
+                              const existingPages = photosConfig.pages || [];
+                              if (existingPages.length > 0) {
+                                const updatedPages = [...existingPages];
+                                const updatedPhotos = [...(updatedPages[0].photos || [])];
+                                [updatedPhotos[idx - 1], updatedPhotos[idx]] = [updatedPhotos[idx], updatedPhotos[idx - 1]];
+                                updatedPages[0] = { ...updatedPages[0], photos: updatedPhotos };
+                                updateAppConfig('photos', { pages: updatedPages });
+                              } else {
+                                const updatedPhotos = [...(photosConfig.photos || [])];
+                                [updatedPhotos[idx - 1], updatedPhotos[idx]] = [updatedPhotos[idx], updatedPhotos[idx - 1]];
+                                updateAppConfig('photos', { photos: updatedPhotos });
+                              }
+                            }}
+                            disabled={idx === 0}
+                            title="Move up"
+                            style={{ background: 'none', border: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', fontSize: 12, color: idx === 0 ? '#CCC' : '#1F5FA6', padding: 0, lineHeight: 1 }}
+                          >
+                            ▲
+                          </button>
+                          <button
+                            onClick={() => {
+                              const total = ((photosConfig.pages?.[0]?.photos) || (photosConfig.photos) || []).length;
+                              if (idx === total - 1) return;
+                              const existingPages = photosConfig.pages || [];
+                              if (existingPages.length > 0) {
+                                const updatedPages = [...existingPages];
+                                const updatedPhotos = [...(updatedPages[0].photos || [])];
+                                [updatedPhotos[idx], updatedPhotos[idx + 1]] = [updatedPhotos[idx + 1], updatedPhotos[idx]];
+                                updatedPages[0] = { ...updatedPages[0], photos: updatedPhotos };
+                                updateAppConfig('photos', { pages: updatedPages });
+                              } else {
+                                const updatedPhotos = [...(photosConfig.photos || [])];
+                                [updatedPhotos[idx], updatedPhotos[idx + 1]] = [updatedPhotos[idx + 1], updatedPhotos[idx]];
+                                updateAppConfig('photos', { photos: updatedPhotos });
+                              }
+                            }}
+                            title="Move down"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#1F5FA6', padding: 0, lineHeight: 1 }}
+                          >
+                            ▼
+                          </button>
+                        </div>
                         <button
                           onClick={() => {
                             const existingPages = photosConfig.pages || [];
@@ -720,30 +844,132 @@ export default function CreatePage() {
             {activeTab === 'secret' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🔒 Secret Folder</h3>
+                <div style={{ background: '#FFF5F7', borderRadius: 8, padding: 12, fontSize: 12, color: '#B04858', lineHeight: 1.6 }}>
+                  🌸 On the correct passcode, a flower blooms, then a birthday cake appears, then your song/video plays.
+                </div>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Secret Passcode (4-digit number)</span>
                   <input className="xp-input" maxLength={4} value={secretConfig.password || ''} onChange={(e) => updateAppConfig('secret', { password: e.target.value.replace(/\D/g, '') })} placeholder="e.g. 5042" style={{ borderRadius: 6 }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Password Hint</span>
-                  <input className="xp-input" value={secretConfig.passwordHint || ''} onChange={(e) => updateAppConfig('secret', { passwordHint: e.target.value })} placeholder="Hint: Complete the Roblox Studio Obby game to find it!" style={{ borderRadius: 6 }} />
+                  <input className="xp-input" value={secretConfig.passwordHint || ''} onChange={(e) => updateAppConfig('secret', { passwordHint: e.target.value })} placeholder="Hint: Complete the Heart Maze game to find it!" style={{ borderRadius: 6 }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Secret Title</span>
                   <input className="xp-input" value={secretConfig.title || ''} onChange={(e) => updateAppConfig('secret', { title: e.target.value })} placeholder="A Hidden Message For You 💌" style={{ borderRadius: 6 }} />
                 </label>
+
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Hidden Content</span>
-                  <textarea className="xp-input" value={secretConfig.content || ''} onChange={(e) => updateAppConfig('secret', { content: e.target.value })} rows={6} placeholder="Your secret message..." style={{ borderRadius: 6, resize: 'vertical' }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Caption Under the Cake (optional)</span>
+                  <textarea className="xp-input" value={secretConfig.content || ''} onChange={(e) => updateAppConfig('secret', { content: e.target.value })} rows={3} placeholder="Happy Birthday! I made this just for you..." style={{ borderRadius: 6, resize: 'vertical' }} />
                 </label>
+
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>
+                    Song / Video (plays after the cake appears)
+                  </span>
+                  {secretConfig.celebrationVideoUrl && (
+                    <div style={{ marginBottom: 8, borderRadius: 8, overflow: 'hidden', border: '2px solid #1F5FA6', position: 'relative', height: 90 }}>
+                      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                      <video src={secretConfig.celebrationVideoUrl} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        onClick={() => updateAppConfig('secret', { celebrationVideoUrl: '' })}
+                        style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: 12, padding: '2px 8px', fontSize: 10, cursor: 'pointer' }}
+                      >
+                        ✕ Remove
+                      </button>
+                    </div>
+                  )}
+                  <label
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      padding: '16px', border: '2px dashed #CBD5E1', borderRadius: 8, cursor: 'pointer', background: '#F8FAFC',
+                    }}
+                  >
+                    <span style={{ fontSize: 24 }}>🎵</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#1F5FA6', marginTop: 4 }}>Upload MP4</span>
+                    <span style={{ fontSize: 10, color: '#888', marginTop: 2 }}>Under 15MB</span>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 15 * 1024 * 1024) {
+                          alert('Please choose a file smaller than 15MB for optimal loading speed.');
+                          return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = (evt) => {
+                          updateAppConfig('secret', { celebrationVideoUrl: evt.target?.result as string });
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
             )}
 
             {activeTab === 'game' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🎮 Heart Maze Game</h3>
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1A1A1A', margin: 0 }}>🎮 Secret-Code Mini Game</h3>
+
+                {/* Game variant picker */}
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>
+                    Choose the Game
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {[
+                      {
+                        id: 'game_2',
+                        emoji: '🚀',
+                        title: 'Hull Run',
+                        desc: 'Project Hail Mary–inspired runner. Dash across the ship\'s hull tubes, jump gaps, dodge debris, collect 3 hearts.',
+                      },
+                      {
+                        id: 'game_1',
+                        emoji: '💕',
+                        title: 'Heart Maze',
+                        desc: 'Retro grid maze. Navigate around spikes and toggles to collect every heart and reach the door.',
+                      },
+                    ].map((g) => {
+                      const selected = (gameConfig.variant || 'game_1') === g.id;
+                      return (
+                        <div
+                          key={g.id}
+                          onClick={() => updateAppConfig('game', { variant: g.id })}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 10,
+                            padding: '12px 14px',
+                            borderRadius: 10,
+                            border: selected ? '2px solid #1F5FA6' : '1px solid #E2E8F0',
+                            background: selected ? '#EFF6FF' : 'white',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <span style={{ fontSize: 24, flexShrink: 0 }}>{g.emoji}</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: '#1A1A1A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {g.title}
+                              {selected && <span style={{ fontSize: 10, color: '#1F5FA6', fontWeight: 700 }}>✓ Selected</span>}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#666', marginTop: 2, lineHeight: 1.5 }}>{g.desc}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div style={{ background: '#F0F8FF', borderRadius: 8, padding: 12, fontSize: 12, color: '#555', lineHeight: 1.6 }}>
-                  🎮 The recipient plays a retro 2D grid-based Heart Maze puzzle game. When they complete all levels, they will be rewarded with the 4-digit Secret Folder password code you configured!
+                  🎮 Whichever game the recipient completes, they'll be rewarded with the 4-digit Secret Folder password code you configured below!
                 </div>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>Victory Message</span>

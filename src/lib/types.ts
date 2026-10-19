@@ -5,7 +5,7 @@ export interface DesktopConfig {
   slug: string;
   recipientName: string;
   wallpaper: string;
-  wallpaperType: 'gradient' | 'solid' | 'image';
+  wallpaperType: 'gradient' | 'solid' | 'image' | 'video';
   stickyNote?: string;
   shutdownMessage: string;
   welcomeMessage: string;
@@ -141,7 +141,11 @@ export interface CalendarConfig {
 export interface SecretConfig {
   passwordHint: string;
   password: string;
-  contentType: 'message' | 'photos' | 'video';
+  contentType: 'message' | 'photos' | 'video' | 'celebration';
   content: string;
   title: string;
+  // For contentType 'celebration': flower blooms, a cake appears, then this
+  // video (song) plays. `content` doubles as an optional caption/message
+  // shown under the cake.
+  celebrationVideoUrl?: string;
 }

@@ -754,14 +754,17 @@ export default function MixtapeCreator({ config, onChange }: MixtapeCreatorProps
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>YouTube or YouTube Music Link</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>YouTube Video or Playlist Link</span>
             <input
               className="xp-input"
               value={config.youtubeUrl || ''}
               onChange={(e) => updateConfig({ youtubeUrl: e.target.value })}
-              placeholder="https://www.youtube.com/watch?v=... or music.youtube.com/..."
+              placeholder="https://www.youtube.com/watch?v=... or playlist?list=..."
               style={{ borderRadius: 6 }}
             />
+            <span style={{ fontSize: 10, color: '#999', lineHeight: 1.4 }}>
+              💡 Paste a playlist link (one with <code>?list=</code> in the URL) and it loops continuously, like a cassette.
+            </span>
           </label>
 
           {/* Tracklist table */}
