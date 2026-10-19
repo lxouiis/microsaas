@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { useSound } from '@/hooks/useSound';
+import { uploadMedia } from '@/lib/uploadMedia';
 
 interface StickerNode {
   id: string;
@@ -53,6 +54,7 @@ export default function MixtapeCreator({ config, onChange }: MixtapeCreatorProps
   const [isEraser, setIsEraser] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [selectedSticker, setSelectedSticker] = useState<string | null>(null);
+  const [uploadingTrackIdx, setUploadingTrackIdx] = useState<number | null>(null);
 
   // Track dragging/resizing/rotating state
   const activeAction = useRef<{
@@ -846,39 +848,44 @@ export default function MixtapeCreator({ config, onChange }: MixtapeCreatorProps
                       style={{ flex: 1, borderRadius: 6, padding: '4px 8px', fontSize: 11, background: '#FFFFFF' }}
                     />
                     <label
-                      title="Upload MP4/MP3/video file (under 800KB) — plays directly, no YouTube needed. Only plays 90s anyway, so a short clip works best."
+                      title="Upload MP4/MP3/video file — plays directly, no YouTube needed. Only plays 90s anyway, so a short clip works best."
                       style={{
                         flexShrink: 0,
                         fontSize: 10, fontWeight: 700, color: '#1F5FA6',
                         background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 6,
-                        padding: '5px 8px', cursor: 'pointer', whiteSpace: 'nowrap',
+                        padding: '5px 8px', cursor: uploadingTrackIdx === i ? 'default' : 'pointer', whiteSpace: 'nowrap',
                       }}
                     >
-                      📁 Upload
+                      {uploadingTrackIdx === i ? '⏳ Uploading…' : '📁 Upload'}
                       <input
                         type="file"
                         accept="video/mp4,video/webm,audio/mpeg,audio/mp3,audio/wav,audio/m4a"
+                        disabled={uploadingTrackIdx === i}
                         style={{ display: 'none' }}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
-                          if (file.size > 800 * 1024) {
-                            alert('Please choose a file smaller than 800KB per track — each track only plays 90s anyway, and the whole gift (all tracks + photos combined) has a 4MB publish limit. A short trimmed clip works best.');
+                          if (file.size > 20 * 1024 * 1024) {
+                            alert('Please choose a file smaller than 20MB.');
                             return;
                           }
-                          const reader = new FileReader();
-                          reader.onload = (evt) => {
+                          setUploadingTrackIdx(i);
+                          try {
+                            const url = await uploadMedia(file);
                             updateSong(i, {
-                              url: evt.target?.result as string,
+                              url,
                               title: song.title || file.name.replace(/\.[^.]+$/, ''),
                             });
-                          };
-                          reader.readAsDataURL(file);
+                          } catch (err) {
+                            alert(err instanceof Error ? err.message : 'Upload failed.');
+                          } finally {
+                            setUploadingTrackIdx(null);
+                          }
                         }}
                       />
                     </label>
                   </div>
-                  {song.url?.startsWith('data:') && (
+                  {song.url && !song.url.match(/^https?:\/\/(open\.spotify\.com|(www\.)?youtube\.com|youtu\.be)/) && song.url.match(/\.(mp4|webm|mp3|wav|m4a)(\?|$)/i) && (
                     <span style={{ fontSize: 10, color: '#16A34A', fontWeight: 700 }}>
                       ✓ File uploaded — plays directly, no external link needed
                     </span>

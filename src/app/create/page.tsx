@@ -11,6 +11,7 @@ type TabType = 'basic' | 'mail' | 'gacha' | 'mixtape' | 'ticket' | 'photos' | 'c
 import Desktop from '@/components/desktop/Desktop';
 import RetroMonitor from '@/components/desktop/RetroMonitor';
 import MixtapeCreator from '@/components/desktop/MixtapeCreator';
+import { uploadMedia } from '@/lib/uploadMedia';
 
 export default function CreatePage() {
   const [config, setConfig] = useState<DesktopConfig>({
@@ -27,6 +28,7 @@ export default function CreatePage() {
   const [publishing, setPublishing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
 
   const updateConfig = (updates: Partial<DesktopConfig>) => {
     setConfig((prev) => ({ ...prev, ...updates }));
@@ -394,27 +396,32 @@ export default function CreatePage() {
                     }}
                   >
                     <span style={{ fontSize: 24 }}>🖼️</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#1F5FA6', marginTop: 4 }}>Upload Photo or Video</span>
-                    <span style={{ fontSize: 10, color: '#888', marginTop: 2 }}>JPG/PNG under 1.5MB, MP4 under 1MB — your whole gift has a 4MB budget</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#1F5FA6', marginTop: 4 }}>
+                      {uploadingField === 'wallpaper' ? 'Uploading…' : 'Upload Photo or Video'}
+                    </span>
+                    <span style={{ fontSize: 10, color: '#888', marginTop: 2 }}>JPG, PNG, or MP4 — under 20MB</span>
                     <input
                       type="file"
                       accept="image/*,video/mp4,video/webm"
+                      disabled={uploadingField === 'wallpaper'}
                       style={{ display: 'none' }}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        const isVideo = file.type.startsWith('video/');
-                        const cap = isVideo ? 1 * 1024 * 1024 : 1.5 * 1024 * 1024;
-                        if (file.size > cap) {
-                          alert(`Please choose a ${isVideo ? 'video' : 'photo'} smaller than ${isVideo ? '1MB' : '1.5MB'} — your whole gift (all photos/videos combined) has a 4MB publish limit.`);
+                        if (file.size > 20 * 1024 * 1024) {
+                          alert('Please choose a file smaller than 20MB.');
                           return;
                         }
-                        const reader = new FileReader();
-                        reader.onload = (evt) => {
-                          const dataUrl = evt.target?.result as string;
-                          updateConfig({ wallpaper: dataUrl, wallpaperType: isVideo ? 'video' : 'image' });
-                        };
-                        reader.readAsDataURL(file);
+                        const isVideo = file.type.startsWith('video/');
+                        setUploadingField('wallpaper');
+                        try {
+                          const url = await uploadMedia(file);
+                          updateConfig({ wallpaper: url, wallpaperType: isVideo ? 'video' : 'image' });
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : 'Upload failed.');
+                        } finally {
+                          setUploadingField(null);
+                        }
                       }}
                     />
                   </label>
@@ -952,24 +959,31 @@ export default function CreatePage() {
                     }}
                   >
                     <span style={{ fontSize: 24 }}>🎵</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#1F5FA6', marginTop: 4 }}>Upload MP4</span>
-                    <span style={{ fontSize: 10, color: '#888', marginTop: 2 }}>Under 1MB — your whole gift has a 4MB budget</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#1F5FA6', marginTop: 4 }}>
+                      {uploadingField === 'secretVideo' ? 'Uploading…' : 'Upload MP4'}
+                    </span>
+                    <span style={{ fontSize: 10, color: '#888', marginTop: 2 }}>Under 20MB</span>
                     <input
                       type="file"
                       accept="video/mp4,video/webm"
+                      disabled={uploadingField === 'secretVideo'}
                       style={{ display: 'none' }}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        if (file.size > 1 * 1024 * 1024) {
-                          alert('Please choose a video smaller than 1MB — your whole gift (all photos/videos combined) has a 4MB publish limit.');
+                        if (file.size > 20 * 1024 * 1024) {
+                          alert('Please choose a file smaller than 20MB.');
                           return;
                         }
-                        const reader = new FileReader();
-                        reader.onload = (evt) => {
-                          updateAppConfig('secret', { celebrationVideoUrl: evt.target?.result as string });
-                        };
-                        reader.readAsDataURL(file);
+                        setUploadingField('secretVideo');
+                        try {
+                          const url = await uploadMedia(file);
+                          updateAppConfig('secret', { celebrationVideoUrl: url });
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : 'Upload failed.');
+                        } finally {
+                          setUploadingField(null);
+                        }
                       }}
                     />
                   </label>
@@ -1117,39 +1131,48 @@ export default function CreatePage() {
 
                     {/* File upload option */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>Or Upload Custom Audio/Video (MP3/MP4)</span>
-                      <span style={{ fontSize: 10, color: '#888' }}>Under 1.5MB — your whole gift has a 4MB publish budget. Prefer a preset track above when possible.</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase' }}>
+                        Or Upload Custom Audio/Video (MP3/MP4) {uploadingField === 'music' && '— Uploading…'}
+                      </span>
+                      <span style={{ fontSize: 10, color: '#888' }}>Under 20MB</span>
                       <input
                         type="file"
                         accept="audio/*,video/mp4"
+                        disabled={uploadingField === 'music'}
                         style={{ fontSize: 12 }}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
-                          if (file) {
-                            if (file.size > 1.5 * 1024 * 1024) {
-                              alert('Please choose a file smaller than 1.5MB — your whole gift (all photos/videos combined) has a 4MB publish limit.');
-                              return;
-                            }
-                            const reader = new FileReader();
-                            reader.onload = (event) => {
-                              const dataUrl = event.target?.result as string;
-                              const tempAudio = new Audio(dataUrl);
-                              tempAudio.onloadedmetadata = () => {
-                                setConfig(prev => ({
-                                  ...prev,
-                                  music: {
-                                    enabled: true,
-                                    url: dataUrl,
-                                    fileName: file.name,
-                                    startOffset: 0,
-                                    endOffset: Math.min(60, Math.floor(tempAudio.duration)),
-                                    loop: true,
-                                    volume: 0.5
-                                  }
-                                }));
-                              };
+                          if (!file) return;
+                          if (file.size > 20 * 1024 * 1024) {
+                            alert('Please choose a file smaller than 20MB.');
+                            return;
+                          }
+                          setUploadingField('music');
+                          try {
+                            const url = await uploadMedia(file);
+                            const tempAudio = new Audio(url);
+                            tempAudio.onloadedmetadata = () => {
+                              setConfig(prev => ({
+                                ...prev,
+                                music: {
+                                  enabled: true,
+                                  url,
+                                  fileName: file.name,
+                                  startOffset: 0,
+                                  endOffset: Math.min(60, Math.floor(tempAudio.duration)),
+                                  loop: true,
+                                  volume: 0.5
+                                }
+                              }));
+                              setUploadingField(null);
                             };
-                            reader.readAsDataURL(file);
+                            tempAudio.onerror = () => {
+                              alert('Uploaded, but the file could not be read as audio/video.');
+                              setUploadingField(null);
+                            };
+                          } catch (err) {
+                            alert(err instanceof Error ? err.message : 'Upload failed.');
+                            setUploadingField(null);
                           }
                         }}
                       />
