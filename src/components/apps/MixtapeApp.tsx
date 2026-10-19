@@ -8,6 +8,10 @@ interface MixtapeAppProps {
   config: MixtapeConfig;
 }
 
+// Each uploaded track plays at most this long before the queue advances —
+// a quick preview-style mixtape rather than waiting out full song lengths.
+const TRACK_CAP_MS = 90_000;
+
 
 
 const PATTERN_TEMPLATES = [
@@ -246,25 +250,43 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
   const handleNextSong = () => {
     if (songs.length === 0) return;
     sounds.click();
+    setQueueFinished(false);
     setCurrentSongIndex((prev) => (prev + 1) % songs.length);
   };
 
   const handlePrevSong = () => {
     if (songs.length === 0) return;
     sounds.click();
+    setQueueFinished(false);
     setCurrentSongIndex((prev) => (prev - 1 + songs.length) % songs.length);
   };
 
   const playSongIndex = (idx: number) => {
     sounds.click();
     setCurrentSongIndex(idx);
+    setQueueFinished(false);
   };
 
   // Advance to the next track without the manual click sound — used when a
-  // track finishes on its own (direct audio `onEnded`, or a YouTube video
-  // ending). Wraps back to track 1, so a tracklist loops continuously.
+  // YouTube video ends. Wraps back to track 1, so a YouTube tracklist loops
+  // continuously (YouTube/Spotify playback isn't duration-capped below).
   const advanceAuto = useCallback(() => {
     setCurrentSongIndex((prev) => (songs.length ? (prev + 1) % songs.length : prev));
+  }, [songs.length]);
+
+  // Direct uploaded files (MP4/MP3/etc.) play a simple queue instead: each
+  // track gets at most TRACK_CAP_MS, then advances to the next one — 1 → 2 →
+  // 3 → 4 — and stops after the last track rather than looping back around.
+  const [queueFinished, setQueueFinished] = useState(false);
+  const advanceQueue = useCallback(() => {
+    setCurrentSongIndex((prev) => {
+      const next = prev + 1;
+      if (next >= songs.length) {
+        setQueueFinished(true);
+        return prev;
+      }
+      return next;
+    });
   }, [songs.length]);
 
   // YouTube's embedded player posts state-change messages once it's told to
@@ -288,6 +310,18 @@ export default function MixtapeApp({ config }: MixtapeAppProps) {
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [phase, advanceAuto]);
+
+  // Direct uploaded tracks: cap each at 90s regardless of actual length,
+  // then advance — whichever comes first, this timer or the media's own
+  // onEnded (for tracks shorter than 90s).
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    const activeUrl = songs[currentSongIndex]?.url;
+    const isDirect = isDirectVideoUrl(activeUrl) || isDirectAudioUrl(activeUrl);
+    if (!isDirect) return;
+    const timer = setTimeout(advanceQueue, TRACK_CAP_MS);
+    return () => clearTimeout(timer);
+  }, [phase, currentSongIndex, songs, advanceQueue]);
 
   const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -385,6 +419,14 @@ function getYouTubeEmbedInfo(url?: string): { src: string; isPlaylist: boolean; 
 function isDirectAudioUrl(url?: string): boolean {
   if (!url) return false;
   return Boolean(url.match(/\.(mp3|wav|ogg|m4a)(\?.*)?$/i) || url.startsWith('data:audio'));
+}
+
+// Uploaded MP4s (data URLs) or direct .mp4/.webm/.mov links — the reliable
+// fallback for when YouTube embedding is flaky (blocked, region-locked, or
+// the parent page's CSP doesn't allow the iframe).
+function isDirectVideoUrl(url?: string): boolean {
+  if (!url) return false;
+  return Boolean(url.match(/\.(mp4|webm|mov)(\?.*)?$/i) || url.startsWith('data:video'));
 }
 
   const cassetteStyle = (config as any).cassette_style || {};
@@ -757,8 +799,9 @@ function isDirectAudioUrl(url?: string): boolean {
             {(() => {
               const activeSong = config.songs?.[currentSongIndex];
               const activeUrl = activeSong?.url || config.spotifyUrl || config.youtubeUrl;
-              const spotifyEmbed = getSpotifyEmbedUrl(activeUrl) || getSpotifyEmbedUrl(config.spotifyUrl);
-              const ytInfo = getYouTubeEmbedInfo(activeUrl) || getYouTubeEmbedInfo(config.youtubeUrl);
+              const isDirectVideo = isDirectVideoUrl(activeUrl);
+              const spotifyEmbed = !isDirectVideo ? (getSpotifyEmbedUrl(activeUrl) || getSpotifyEmbedUrl(config.spotifyUrl)) : null;
+              const ytInfo = !isDirectVideo ? (getYouTubeEmbedInfo(activeUrl) || getYouTubeEmbedInfo(config.youtubeUrl)) : null;
               const isDirectAudio = isDirectAudioUrl(activeUrl);
 
               if (spotifyEmbed) {
@@ -814,6 +857,26 @@ function isDirectAudioUrl(url?: string): boolean {
                 );
               }
 
+              if (isDirectVideo) {
+                return (
+                  <motion.div
+                    key={`video-${currentSongIndex}`}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ marginTop: 12, borderRadius: 12, overflow: 'hidden' }}
+                  >
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <video src={activeUrl} controls autoPlay playsInline onEnded={advanceQueue} style={{ width: '100%', display: 'block', borderRadius: 12 }} />
+                    {songs.length > 1 && (
+                      <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 4, textAlign: 'center' }}>
+                        {queueFinished ? '🏁 Queue finished' : `Track ${currentSongIndex + 1} of ${songs.length} — up to 90s each`}
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              }
+
               if (isDirectAudio) {
                 return (
                   <motion.div
@@ -823,7 +886,12 @@ function isDirectAudioUrl(url?: string): boolean {
                     transition={{ duration: 0.3 }}
                     style={{ marginTop: 12, background: 'white', borderRadius: 12, padding: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
                   >
-                    <audio src={activeUrl} controls autoPlay onEnded={advanceAuto} style={{ width: '100%' }} />
+                    <audio src={activeUrl} controls autoPlay onEnded={advanceQueue} style={{ width: '100%' }} />
+                    {songs.length > 1 && (
+                      <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 6, textAlign: 'center' }}>
+                        {queueFinished ? '🏁 Queue finished' : `Track ${currentSongIndex + 1} of ${songs.length} — up to 90s each`}
+                      </div>
+                    )}
                   </motion.div>
                 );
               }

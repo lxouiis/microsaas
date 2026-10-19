@@ -837,13 +837,52 @@ export default function MixtapeCreator({ config, onChange }: MixtapeCreatorProps
                       ×
                     </button>
                   </div>
-                  <input
-                    className="xp-input"
-                    value={song.url || ''}
-                    onChange={(e) => updateSong(i, { url: e.target.value })}
-                    placeholder="🎵 Song Link (Spotify track, YouTube video, or MP3 URL)"
-                    style={{ borderRadius: 6, padding: '4px 8px', fontSize: 11, background: '#FFFFFF' }}
-                  />
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input
+                      className="xp-input"
+                      value={song.url || ''}
+                      onChange={(e) => updateSong(i, { url: e.target.value })}
+                      placeholder="🎵 Song Link (Spotify, YouTube, or direct file URL)"
+                      style={{ flex: 1, borderRadius: 6, padding: '4px 8px', fontSize: 11, background: '#FFFFFF' }}
+                    />
+                    <label
+                      title="Upload MP4/MP3/video file — plays directly, no YouTube needed"
+                      style={{
+                        flexShrink: 0,
+                        fontSize: 10, fontWeight: 700, color: '#1F5FA6',
+                        background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 6,
+                        padding: '5px 8px', cursor: 'pointer', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      📁 Upload
+                      <input
+                        type="file"
+                        accept="video/mp4,video/webm,audio/mpeg,audio/mp3,audio/wav,audio/m4a"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 20 * 1024 * 1024) {
+                            alert('Please choose a file smaller than 20MB — large files slow down the whole gift.');
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onload = (evt) => {
+                            updateSong(i, {
+                              url: evt.target?.result as string,
+                              title: song.title || file.name.replace(/\.[^.]+$/, ''),
+                            });
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {song.url?.startsWith('data:') && (
+                    <span style={{ fontSize: 10, color: '#16A34A', fontWeight: 700 }}>
+                      ✓ File uploaded — plays directly, no external link needed
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
